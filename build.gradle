@@ -1,0 +1,59 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.badlogicgames.gdx:gdx-jnigen-gradle:2.5.1'
+    }
+}
+
+plugins {
+    id 'java'
+    id 'java-library'
+    id 'application'
+}
+
+group = project.maven_group
+version = project.version
+
+application {
+    mainClass = "me.white.wlua.Main"
+}
+
+repositories {
+    mavenCentral()
+}
+
+apply plugin: 'com.badlogicgames.gdx.gdx-jnigen'
+
+dependencies {
+    implementation 'com.badlogicgames.gdx:gdx-jnigen-loader:2.5.1'
+}
+
+jnigen {
+    sharedLibName = "lua"
+    all {
+        cFlags += ' -DLUA_COMPAT_5_3'
+        cppFlags += ' -DLUA_COMPAT_5_3'
+        headerDirs = ['lua']
+        cppExcludes = ['lua/testes/libs/*', 'lua/onelua.c']
+        cExcludes = ['lua/testes/libs/*', 'lua/onelua.c']
+        libraries = ' -lm '
+
+//        cFlags += " -fvisibility=hidden "
+//        cppFlags += " -std=c++11 -fvisibility=hidden "
+//        linkerFlags += " -fvisibility=hidden "
+    }
+    add(Windows, x32)
+    add(Windows, x64)
+}
+
+sourceSets {
+    main {
+        runtimeClasspath += jnigenJarNativesDesktop.outputs.getFiles()
+    }
+    test {
+        runtimeClasspath += jnigenJarNativesDesktop.outputs.getFiles()
+    }
+}
