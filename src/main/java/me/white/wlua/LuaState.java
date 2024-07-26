@@ -9,14 +9,14 @@ public class LuaState implements AutoCloseable {
     private LuaState mainThread;
     private List<LuaState> subThreads = new ArrayList<>();
 
-    protected LuaState(long ptr, int id, LuaState mainThread) {
+    protected LuaState(long ptr, int state_id, LuaState mainThread) {
         if (ptr == 0) {
             throw new IllegalStateException("Could not create new lua state.");
         }
         this.ptr = ptr;
-        this.id = id == -1 ? LuaInstances.add(this) : id;
+        this.id = state_id == -1 ? LuaInstances.add(this) : state_id;
         this.mainThread = mainThread == null ? this : mainThread;
-        LuaNatives.init_meta(ptr);
+        LuaNatives.init_state(ptr, id);
     }
 
     public LuaState() {

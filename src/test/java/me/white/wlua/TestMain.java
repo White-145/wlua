@@ -3,8 +3,15 @@ package me.white.wlua;
 public class TestMain {
     public static void main(String[] args) {
         try (LuaState state = new LuaState()) {
+            LuaNatives.push_function(state.ptr, (lua, params) -> {
+                LuaNatives.lua_pop(lua.ptr, params);
+                System.out.println("Hello, Java!");
+                return 0;
+            });
+            LuaNatives.lua_setglobal(state.ptr, "hello");
             String chunk = """
-                    print("Hello, World!")
+                    print("Hello, Lua!")
+                    hello()
                     """;
             LuaNatives.luaL_openlibs(state.ptr);
             int load = LuaNatives.luaL_loadstring(state.ptr, chunk);
@@ -15,7 +22,7 @@ public class TestMain {
     }
 
     public static void check(LuaState state, int code, String what) {
-        if (code != 0) {
+        if (code != LuaConsts.OK && code != LuaConsts.YIELD) {
             String msg = LuaNatives.lua_tostring(state.ptr, -1);
             throw new IllegalStateException(what + " failed: code " + getErrorCodeName(code) + ", " + msg);
         }

@@ -11,13 +11,17 @@ public class LuaNatives {
         }
     }
 
-    private static int invoke(int stateIndex, Object function, int paramCount) {
+    private static int invoke(int stateIndex, Object function, int params) {
         LuaState state = LuaInstances.get(stateIndex);
+        if (state == null) {
+            lua_pushstring(state.ptr, "error getting lua state");
+            return -1;
+        }
         if (!(function instanceof JavaFunction)) {
             lua_pushstring(state.ptr, "error invoking java function");
             return -1;
         }
-        return ((JavaFunction)function).run(state);
+        return ((JavaFunction)function).run(state, params);
     }
 
     private static int adopt(int mainId, long ptr) {
@@ -30,111 +34,111 @@ public class LuaNatives {
     }
 
     /*JNI
-        extern "C" {
-            #include "lua.h"
-            #include "lualib.h"
-            #include "lauxlib.h"
-        }
+    extern "C" {
+        #include "lua.h"
+        #include "lualib.h"
+        #include "lauxlib.h"
+    }
 
-        #define JAVA_STATE_INDEX "__jmainstate__"
-        #define JAVA_FUNCTION_METATABLE "__jfunctionmeta__"
-        #define JAVA_FUNCTION_DATA "__jfunctiondata__"
+    #define JAVA_STATE_INDEX "state_index"
+    #define JAVA_OBJECT_METATABLE "object_meta"
+    #define JAVA_FUNCTION_DATA "function_data"
 
-        JavaVM* java_vm = NULL;
-        jint env_version;
-        jclass natives_class;
-        jmethodID invoke_method;
-        jmethodID adopt_method;
-        jmethodID throwable_tostring_method;
+    JavaVM* java_vm = NULL;
+    jint env_version;
+    jclass natives_class;
+    jmethodID invoke_method;
+    jmethodID adopt_method;
+    jmethodID throwable_tostring_method;
 
-        int update_env(JNIEnv * env) {
-            if (env->GetJavaVM(&java_vm) == 0) {
-                env_version = env->GetVersion();
-                return 0;
-            }
-            return -1;
-        }
-
-        JNIEnv* get_env(lua_State* L) {
-            if (java_vm == NULL) {
-                luaL_error(L, "Cannot to get JavaVM.");
-                return NULL;
-            }
-            JNIEnv* env;
-            int code = java_vm->GetEnv((void**)&env, env_version);
-            if (code != JNI_OK) {
-                luaL_error(L, "Cannot get JNIEnv, error code: %d.", code);
-                return NULL;
-            }
-            return env;
-        }
-
-        int get_main_thread_id(lua_State* L) {
-            lua_pushstring(L, JAVA_STATE_INDEX);
-            lua_rawget(L, LUA_REGISTRYINDEX);
-            int id = lua_tointeger(L, -1);
-            lua_pop(L, 1);
-            return id;
-        }
-
-        int create_new_id(lua_State* L) {
-            int main_id = get_main_thread_id(L);
-            JNIEnv* env = get_env(L);
-            int new_id = env->CallStaticIntMethod(natives_class, adopt_method, main_id, (jlong)L);
-            lua_pushthread(L);
-            lua_pushinteger(L, new_id);
-            lua_settable(L, LUA_REGISTRYINDEX);
-            return new_id;
-        }
-
-        int get_state_index(lua_State* L) {
-            if (lua_pushthread(L) == 1) {
-                // main thread
-                lua_pop(L, 1);
-                return (int)get_main_thread_id(L);
-            }
-            lua_rawget(L, LUA_REGISTRYINDEX);
-            if (lua_isnil(L, -1)) {
-                // thread was created on lua side
-                lua_pop(L, 1);
-                return (int)create_new_id(L);
-            }
-            int state_index = (int)lua_tointeger(L, -1);
-            lua_pop(L, 1);
-            return state_index;
-        }
-
-        int return_or_error(JNIEnv* env, lua_State* L, int ret) {
-            if (ret < 0) {
-                return lua_error(L);
-            }
-            jthrowable exception = env->ExceptionOccurred();
-            if (!exception) {
-                return ret;
-            }
-            env->ExceptionClear();
-            jstring message = (jstring)env->CallObjectMethod(exception, throwable_tostring_method);
-            const char* str = env->GetStringUTFChars(message, NULL);
-            lua_pushstring(L, str);
-            env->ReleaseStringUTFChars(message, str);
-            env->DeleteLocalRef((jobject)message);
-            return lua_error(L);
-        }
-
-        int function_wrapper(lua_State* L) {
-            jobject* function = (jobject*)lua_touserdata(L, lua_upvalueindex(1));
-            JNIEnv* env = get_env(L);
-            int stateIndex = get_state_index(L);
-            int value = (int)env->CallStaticIntMethod(natives_class, invoke_method, (jint)stateIndex, *function, lua_gettop(L));
-            return return_or_error(env, L, value);
-        }
-
-        int gc_java_function(lua_State* L) {
-            jobject* global_ref = (jobject*)luaL_checkudata(L, 1, JAVA_FUNCTION_DATA);
-            JNIEnv* env = get_env(L);
-            env->DeleteGlobalRef(*global_ref);
+    int update_env(JNIEnv * env) {
+        if (env->GetJavaVM(&java_vm) == 0) {
+            env_version = env->GetVersion();
             return 0;
         }
+        return -1;
+    }
+
+    JNIEnv* get_env(lua_State* L) {
+        if (java_vm == NULL) {
+            luaL_error(L, "Cannot to get JavaVM.");
+            return NULL;
+        }
+        JNIEnv* env;
+        int code = java_vm->GetEnv((void**)&env, env_version);
+        if (code != JNI_OK) {
+            luaL_error(L, "Cannot get JNIEnv, error code: %d.", code);
+            return NULL;
+        }
+        return env;
+    }
+
+    int get_main_thread_id(lua_State* L) {
+        lua_pushstring(L, JAVA_STATE_INDEX);
+        lua_rawget(L, LUA_REGISTRYINDEX);
+        int id = lua_tointeger(L, -1);
+        lua_pop(L, 1);
+        return id;
+    }
+
+    int create_new_id(lua_State* L) {
+        int main_id = get_main_thread_id(L);
+        JNIEnv* env = get_env(L);
+        int new_id = env->CallStaticIntMethod(natives_class, adopt_method, main_id, (jlong)L);
+        lua_pushthread(L);
+        lua_pushinteger(L, new_id);
+        lua_settable(L, LUA_REGISTRYINDEX);
+        return new_id;
+    }
+
+    int get_state_index(lua_State* L) {
+        if (lua_pushthread(L) == 1) {
+            // main thread
+            lua_pop(L, 1);
+            return (int)get_main_thread_id(L);
+        }
+        lua_rawget(L, LUA_REGISTRYINDEX);
+        if (lua_isnil(L, -1)) {
+            // thread was created on lua side
+            lua_pop(L, 1);
+            return (int)create_new_id(L);
+        }
+        int state_index = (int)lua_tointeger(L, -1);
+        lua_pop(L, 1);
+        return state_index;
+    }
+
+    int return_or_error(JNIEnv* env, lua_State* L, int ret) {
+        if (ret < 0) {
+            return lua_error(L);
+        }
+        jthrowable exception = env->ExceptionOccurred();
+        if (!exception) {
+            return ret;
+        }
+        env->ExceptionClear();
+        jstring message = (jstring)env->CallObjectMethod(exception, throwable_tostring_method);
+        const char* str = env->GetStringUTFChars(message, NULL);
+        lua_pushstring(L, str);
+        env->ReleaseStringUTFChars(message, str);
+        env->DeleteLocalRef((jobject)message);
+        return lua_error(L);
+    }
+
+    int function_wrapper(lua_State* L) {
+        jobject* function = (jobject*)lua_touserdata(L, lua_upvalueindex(1));
+        int state_index = get_state_index(L);
+        JNIEnv* env = get_env(L);
+        int value = (int)env->CallStaticIntMethod(natives_class, invoke_method, (jint)state_index, *function, lua_gettop(L));
+        return return_or_error(env, L, value);
+    }
+
+    int gc_java(lua_State* L) {
+        jobject* global_ref = (jobject*)luaL_checkudata(L, 1, JAVA_FUNCTION_DATA);
+        JNIEnv* env = get_env(L);
+        env->DeleteGlobalRef(*global_ref);
+        return 0;
+    }
     */
 
     protected static native String LUA_COPYRIGHT(); /*
@@ -888,13 +892,16 @@ public class LuaNatives {
         return env->ExceptionOccurred() ? -1 : 0;
     */
 
-    protected static native void init_meta(long ptr); /*
+    protected static native void init_state(long ptr, int id); /*
         lua_State* L = (lua_State*)ptr;
-        if (luaL_newmetatable(L, JAVA_FUNCTION_METATABLE) == 1) {
-            lua_pushcfunction(L, &gc_java_function);
+        if (luaL_newmetatable(L, JAVA_OBJECT_METATABLE) == 1) {
+            lua_pushcfunction(L, &gc_java);
             lua_setfield(L, -2, "__gc");
         }
         lua_pop(L, 1);
+        lua_pushstring(L, JAVA_STATE_INDEX);
+        lua_pushinteger(L, id);
+        lua_rawset(L, LUA_REGISTRYINDEX);
     */
 
     protected static native void push_function(long ptr, JavaFunction function); /*
@@ -903,9 +910,9 @@ public class LuaNatives {
         if (env->ExceptionOccurred()) {
             return;
         }
-        jobject* userdata = (jobject*)lua_newuserdata(L, sizeof(global_ref));
+        jobject* userdata = (jobject*)lua_newuserdatauv(L, sizeof(global_ref), 0);
         *userdata = function;
-        luaL_setmetatable(L, JAVA_FUNCTION_METATABLE);
+        luaL_setmetatable(L, JAVA_OBJECT_METATABLE);
         lua_pushcclosure(L, &function_wrapper, 1);
     */
 }
