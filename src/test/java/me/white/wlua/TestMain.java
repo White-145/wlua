@@ -3,21 +3,19 @@ package me.white.wlua;
 public class TestMain {
     public static void main(String[] args) {
         try (LuaState state = new LuaState()) {
-            LuaNatives.push_function(state.ptr, (lua, params) -> {
-                LuaNatives.lua_pop(lua.ptr, params);
+            LuaNatives.pushFunction(state.ptr, new JavaFunction((lua, params) -> {
                 System.out.println("Hello, Java!");
-                return 0;
-            });
+                return new VarArg();
+            }));
             LuaNatives.lua_setglobal(state.ptr, "hello");
             String chunk = """
                     print("Hello, Lua!")
                     hello()
+                    print(type(hello))
                     """;
             LuaNatives.luaL_openlibs(state.ptr);
-            int load = LuaNatives.luaL_loadstring(state.ptr, chunk);
-            check(state, load, "load");
-            int call = LuaNatives.lua_pcall(state.ptr, 0, 0, 0);
-            check(state, call, "call");
+            state.loadChunk(chunk);
+            state.run(0, 0);
         }
     }
 

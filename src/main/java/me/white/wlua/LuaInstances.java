@@ -25,20 +25,21 @@ public class LuaInstances {
     }
 
     public static LuaState get(int i) {
-        if (i == 0 || i >= states.size() || freeIndices.contains(i)) {
+        if (i >= states.size() || freeIndices.contains(i)) {
             return null;
         }
         return states.get(i);
     }
 
-    public static LuaState remove(int i) {
+    public static void remove(int i) {
         if (i == states.size() - 1) {
-            return states.remove(i);
+            do {
+                states.removeLast();
+            } while (freeIndices.contains(states.size() - 1));
+            freeIndices.removeIf(j -> j >= states.size());
+        } else if (i >= 0 && i < states.size() && !freeIndices.contains(i)) {
+            freeIndices.add(i);
+            states.set(i, null);
         }
-        if (freeIndices.contains(i)) {
-            return null;
-        }
-        freeIndices.add(i);
-        return states.set(i, null);
     }
 }

@@ -32,7 +32,7 @@ dependencies {
 }
 
 jnigen {
-    sharedLibName = "lua"
+    sharedLibName = "wlua"
     all {
         cFlags += ' -DLUA_COMPAT_5_3'
         cppFlags += ' -DLUA_COMPAT_5_3'

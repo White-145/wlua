@@ -16,30 +16,61 @@ public class LuaState implements AutoCloseable {
         this.ptr = ptr;
         this.id = state_id == -1 ? LuaInstances.add(this) : state_id;
         this.mainThread = mainThread == null ? this : mainThread;
-        LuaNatives.init_state(ptr, id);
+        LuaNatives.initState(ptr, id);
     }
 
     public LuaState() {
-        this(LuaNatives.luaL_newstate(), -1, null);
+        this(LuaNatives.newState(), -1, null);
     }
 
     protected void addSubThread(LuaState thread) {
         subThreads.add(thread);
     }
 
-    public void push(String str) {
-        LuaNatives.lua_pushstring(ptr, str);
+    public void loadChunk(String chunk) throws IllegalStateException {
+        int code = LuaNatives.luaL_loadstring(ptr, chunk);
+        if (code != LuaConsts.OK) {
+            String name = "Unknown";
+            if (code == LuaConsts.ERR_SYNTAX) {
+                name = "Syntax";
+            }
+            if (code == LuaConsts.ERR_MEM) {
+                name = "Memory";
+            }
+            String msg = LuaNatives.lua_tostring(ptr, -1);
+            throw new IllegalStateException(name + " error: " + msg);
+        }
     }
 
-    public String getString(int i) {
-        if (LuaNatives.lua_isstring(ptr, i) == 0) {
-            return null;
+    public void run(int params, int values) {
+        int code = LuaNatives.lua_pcall(ptr, params, values, 0);
+        if (code != LuaConsts.OK) {
+            String name = "Unknown";
+            if (code == LuaConsts.ERR_RUN) {
+                name = "Syntax";
+            } else if (code == LuaConsts.ERR_MEM) {
+                name = "Memory";
+            } else if (code == LuaConsts.ERR_ERR) {
+                name = "Error message";
+            }
+            String msg = LuaNatives.lua_tostring(ptr, -1);
+            throw new IllegalStateException(name + " error: " + msg);
         }
-        return LuaNatives.lua_tostring(ptr, i);
     }
 
     @Override
     public void close() {
-        LuaNatives.lua_close(ptr);
+        if (mainThread == this) {
+            for (LuaState thread : subThreads) {
+                LuaInstances.remove(thread.id);
+            }
+            subThreads.clear();
+            LuaInstances.remove(id);
+            LuaNatives.lua_close(ptr);
+        } else {
+            mainThread.subThreads.remove(this);
+            LuaInstances.remove(id);
+            LuaNatives.removeState(ptr);
+        }
     }
 }

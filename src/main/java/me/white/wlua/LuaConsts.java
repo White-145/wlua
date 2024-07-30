@@ -11,6 +11,7 @@ public class LuaConsts {
     public static final int VERSION_RELEASE_NUM = LuaNatives.LUA_VERSION_RELEASE_NUM();
     public static final String SIGNATURE = LuaNatives.LUA_SIGNATURE();
     public static final int MULT_RET = LuaNatives.LUA_MULTRET();
+    public static final int REGISTRY_INDEX = LuaNatives.LUA_REGISTRYINDEX();
     public static final int OK = LuaNatives.LUA_OK();
     public static final int YIELD = LuaNatives.LUA_YIELD();
     public static final int ERR_RUN = LuaNatives.LUA_ERRRUN();
