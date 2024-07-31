@@ -5,7 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class LuaState implements AutoCloseable {
+public class LuaState extends LuaValue implements AutoCloseable {
     protected long ptr;
     protected List<LuaState> subThreads = new ArrayList<>();
     protected Set<Integer> aliveReferences = new HashSet<>();
@@ -73,6 +73,15 @@ public class LuaState implements AutoCloseable {
 
     public boolean isClosed() {
         return mainThread.isClosed;
+    }
+
+    @Override
+    protected void push(LuaState state) {
+        state.checkIsAlive();
+        if (state.mainThread.isSubThread(this)) {
+            throw new IllegalStateException("Could not push thread to the separate lua state.");
+        }
+        LuaNatives.lua_pushthread(ptr);
     }
 
     @Override
