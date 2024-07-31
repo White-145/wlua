@@ -110,6 +110,8 @@ public abstract class LuaValue {
     public void unref() { }
 
     public static class Ref extends LuaValue {
+        private Cleaner.Cleanable cleanable;
+        private CleanableRef cleanableRef;
         protected LuaState state;
         protected int reference;
 
@@ -118,8 +120,8 @@ public abstract class LuaValue {
             this.state = state;
             this.reference = LuaNatives.getRef(state.ptr, index);
             state.aliveReferences.add(reference);
-            // TODO: cleaner not working :(
-            CLEANER.register(this, new CleanableRef(state, reference));
+            cleanableRef = new CleanableRef(state, reference);
+            cleanable = CLEANER.register(this, cleanableRef);
         }
 
         public boolean isAlive() {
@@ -138,6 +140,7 @@ public abstract class LuaValue {
                 LuaNatives.luaL_unref(state.ptr, LuaConsts.REGISTRY_INDEX, reference);
                 state.aliveReferences.remove(reference);
             }
+            cleanable.clean();
         }
 
         @Override
@@ -177,7 +180,6 @@ public abstract class LuaValue {
 
             @Override
             public void run() {
-                System.out.println("clean!!!");
                 if (!state.isClosed() && state.aliveReferences.contains(reference)) {
                     LuaNatives.luaL_unref(state.ptr, LuaConsts.REGISTRY_INDEX, reference);
                     state.aliveReferences.remove(reference);
