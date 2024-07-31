@@ -1,13 +1,17 @@
 package me.white.wlua;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class LuaState implements AutoCloseable {
     protected long ptr;
+    protected boolean isClosed = false;
+    protected List<LuaState> subThreads = new ArrayList<>();
+    protected Set<Integer> aliveReferences = new HashSet<>();
+    protected LuaState mainThread;
     private int id;
-    private LuaState mainThread;
-    private List<LuaState> subThreads = new ArrayList<>();
 
     protected LuaState(long ptr, int state_id, LuaState mainThread) {
         if (ptr == 0) {
@@ -27,35 +31,28 @@ public class LuaState implements AutoCloseable {
         subThreads.add(thread);
     }
 
-    public void loadChunk(String chunk) throws IllegalStateException {
-        int code = LuaNatives.luaL_loadstring(ptr, chunk);
-        if (code != LuaConsts.OK) {
-            String name = "Unknown";
-            if (code == LuaConsts.ERR_SYNTAX) {
-                name = "Syntax";
-            }
-            if (code == LuaConsts.ERR_MEM) {
-                name = "Memory";
-            }
-            String msg = LuaNatives.lua_tostring(ptr, -1);
-            throw new IllegalStateException(name + " error: " + msg);
-        }
+    protected void pop(int n) {
+        LuaNatives.lua_pop(ptr, n);
     }
 
-    public void run(int params, int values) {
-        int code = LuaNatives.lua_pcall(ptr, params, values, 0);
-        if (code != LuaConsts.OK) {
-            String name = "Unknown";
-            if (code == LuaConsts.ERR_RUN) {
-                name = "Syntax";
-            } else if (code == LuaConsts.ERR_MEM) {
-                name = "Memory";
-            } else if (code == LuaConsts.ERR_ERR) {
-                name = "Error message";
-            }
-            String msg = LuaNatives.lua_tostring(ptr, -1);
-            throw new IllegalStateException(name + " error: " + msg);
-        }
+    public void openLibs() {
+        LuaNatives.luaL_openlibs(ptr);
+    }
+
+    public void setGlobal(LuaValue value, String name) {
+        value.push(this);
+        LuaNatives.lua_setglobal(ptr, name);
+    }
+
+    public LuaValue getGlobal(String name) {
+        LuaNatives.lua_getglobal(ptr, name);
+        LuaValue value = LuaValue.from(this, -1);
+        pop(1);
+        return value;
+    }
+
+    public void run(String chunk) {
+        LuaValue.load(this, chunk).run(this, new VarArg());
     }
 
     @Override
@@ -72,5 +69,6 @@ public class LuaState implements AutoCloseable {
             LuaInstances.remove(id);
             LuaNatives.removeState(ptr);
         }
+        isClosed = true;
     }
 }

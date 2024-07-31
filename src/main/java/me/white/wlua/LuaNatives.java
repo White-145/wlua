@@ -139,6 +139,11 @@ public class LuaNatives {
         env->DeleteGlobalRef(*global_ref);
         return 0;
     }
+
+    void copy_to_top(lua_State* L, int index) {
+        lua_pushnil(L);
+        lua_copy(L, index < 0 ? index - 1 : index, -1);
+    }
     */
 
     public static native String LUA_COPYRIGHT(); /*
@@ -621,8 +626,8 @@ public class LuaNatives {
         lua_pushnumber((lua_State*)ptr, (lua_Number)n);
     */
 
-    public static native String lua_pushstring(long ptr, String s); /*
-        return env->NewStringUTF(lua_pushstring((lua_State*)ptr, s));
+    public static native void lua_pushstring(long ptr, String s); /*
+        lua_pushstring((lua_State*)ptr, s);
     */
 
     public static native int lua_pushthread(long ptr); /*
@@ -750,7 +755,11 @@ public class LuaNatives {
     */
 
     public static native String lua_tostring(long ptr, int index); /*
-        return env->NewStringUTF(lua_tostring((lua_State*)ptr, (int)index));
+        lua_State* L = (lua_State*)ptr;
+        copy_to_top(L, index);
+        const char* str = lua_tostring(L, -1);
+        lua_pop(L, 1);
+        return env->NewStringUTF(str);
     */
 
     public static native long lua_tothread(long ptr, int index); /*
@@ -937,10 +946,16 @@ public class LuaNatives {
 
     public static native int getRef(long ptr, int i); /*
         lua_State* L = (lua_State*)ptr;
-        if (i != -1 && i != lua_gettop(L)) {
-            lua_pushnil(L);
-            lua_copy(L, i < 0 ? i - 1 : i, -1);
-        }
+        copy_to_top(L, i);
         return (jint)luaL_ref(L, LUA_REGISTRYINDEX);
+    */
+
+    public static native int getThreadId(long ptr, int i); /*
+        lua_State* L = (lua_State*)ptr;
+        if (!lua_isthread(L, i)) {
+            return -1;
+        }
+        lua_State* thread = lua_tothread(L, i);
+        return get_state_index(thread);
     */
 }
