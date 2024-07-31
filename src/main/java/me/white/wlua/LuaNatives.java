@@ -17,11 +17,20 @@ public class LuaNatives {
             lua_pushstring(callerPtr, "error getting lua state");
             return -1;
         }
-        if (!(function instanceof JavaFunction)) {
+        if (!(function instanceof FunctionValue)) {
             lua_pushstring(callerPtr, "error invoking java function");
             return -1;
         }
-        return ((JavaFunction)function).run(state, params);
+        LuaValue[] values = new LuaValue[params];
+        for (int i = 0; i < params; ++i) {
+            values[i] = LuaValue.from(state, i - params);
+        }
+        state.pop(params);
+        VarArg results = ((FunctionValue)function).run(state, new VarArg(values));
+        for (LuaValue value : results.getValues()) {
+            value.push(state);
+        }
+        return 0;
     }
 
     private static int adopt(int mainId, long ptr) {
@@ -930,7 +939,7 @@ public class LuaNatives {
         lua_rawset(L, LUA_REGISTRYINDEX);
     */
 
-    public static native void pushFunction(long ptr, JavaFunction function); /*
+    public static native void pushFunction(long ptr, FunctionValue function); /*
         lua_State* L = (lua_State*)ptr;
         jobject global_ref = env->NewGlobalRef(function);
         if (env->ExceptionOccurred()) {

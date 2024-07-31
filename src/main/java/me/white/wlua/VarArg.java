@@ -21,6 +21,16 @@ public class VarArg {
         return values;
     }
 
+    public LuaValue get(int i) {
+        if (i < 0) {
+            i += values.length;
+        }
+        if (i >= values.length || i < 0) {
+            return LuaValue.nil();
+        }
+        return values[i];
+    }
+
     public int size() {
         return values.length;
     }

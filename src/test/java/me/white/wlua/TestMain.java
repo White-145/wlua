@@ -6,14 +6,49 @@ import java.util.Set;
 public class TestMain {
     public static void main(String[] args) {
         try (LuaState state = new LuaState()) {
-            testTable(state);
+            testValues(state);
             assert LuaNatives.lua_gettop(state.ptr) == 0;
         }
     }
 
+    private static void testValues(LuaState state) {
+        BooleanValue bool = LuaValue.of(true);
+        state.setGlobal(bool, "value");
+        LuaValue value = state.getGlobal("value");
+        assert value.equals(bool);
+        assert ((BooleanValue)value).getBoolean();
+
+        IntegerValue integer = LuaValue.of(21);
+        state.setGlobal(integer, "value");
+        value = state.getGlobal("value");
+        assert value.equals(integer);
+        assert ((IntegerValue)value).getInteger() == 21;
+
+        NumberValue number = LuaValue.of(182.4);
+        state.setGlobal(number, "value");
+        value = state.getGlobal("value");
+        assert value.equals(number);
+        assert ((NumberValue)value).getNumber() == 182.4;
+
+        StringValue str = LuaValue.of("test string");
+        state.setGlobal(str, "value");
+        value = state.getGlobal("value");
+        assert value.equals(str);
+        assert ((StringValue)value).getString().equals("test string");
+
+        NilValue nil = LuaValue.of();
+        state.setGlobal(nil, "value");
+        value = state.getGlobal("value");
+        assert value.equals(nil);
+        assert state.getGlobal("not existant").equals(nil);
+
+        testTable(state);
+        testFunction(state);
+    }
+
     private static void testTable(LuaState state) {
-        LuaValue.TableRef table = new LuaValue.Table().ref(state);
-        assert table.size() == 0;
+        TableRefValue table = new TableValue().ref(state);
+        assert table.isEmpty();
         table.put(LuaValue.of("kind value"), LuaValue.of(true));
         table.put(LuaValue.of("evil value"), LuaValue.of(false));
         assert table.size() == 2;
@@ -21,6 +56,7 @@ public class TestMain {
         assert table.get(LuaValue.of("evil value")).equals(state, LuaValue.of(false));
         // setting a key to nil is just a fancy way of removing it
         table.put(LuaValue.of("evil value"), LuaValue.nil());
+        assert table.get(LuaValue.of("evil value")).equals(state, LuaValue.nil());
         assert table.size() == 1;
 
         HashMap<LuaValue, LuaValue> map = new HashMap<>();
@@ -47,8 +83,25 @@ public class TestMain {
         assert map.equals(table);
 
         table.clear();
-        // cant trust .clear(), gotta make sure table size really is 0
-        assert table.isEmpty();
         table.unref();
+    }
+
+    private static void testFunction(LuaState state) {
+        FunctionValue func = LuaValue.of((lua, args) -> {
+            return new VarArg(args.get(0), LuaValue.nil());
+        });
+        VarArg ret = func.run(state, new VarArg(LuaValue.of("string"), LuaValue.nil()));
+        assert ret.size() == 2;
+        LuaValue retValue = ret.get(0);
+        assert retValue instanceof StringValue && ((StringValue)retValue).getString().equals("string");
+
+        state.setGlobal(func, "value");
+        LuaValue value = state.getGlobal("value");
+        assert value instanceof FunctionRefValue;
+        ret = ((FunctionRefValue)value).run(state, new VarArg(LuaValue.of("string"), LuaValue.nil()));
+        assert ret.size() == 2;
+        retValue = ret.get(0);
+        assert retValue instanceof StringValue && ((StringValue)retValue).getString().equals("string");
+        value.unref();
     }
 }

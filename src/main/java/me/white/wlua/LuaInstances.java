@@ -25,7 +25,7 @@ public class LuaInstances {
     }
 
     public static LuaState get(int i) {
-        if (i >= states.size() || freeIndices.contains(i)) {
+        if (i < 0 || i >= states.size() || freeIndices.contains(i)) {
             return null;
         }
         return states.get(i);
