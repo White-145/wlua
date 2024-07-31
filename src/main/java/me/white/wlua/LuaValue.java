@@ -31,7 +31,7 @@ public abstract class LuaValue {
             return new FunctionRefValue(state, index);
         }
         if (type == LuaConsts.TYPE_THREAD) {
-            return new ThreadValue(state, LuaInstances.get(LuaNatives.getThreadId(state.ptr, index)));
+            return LuaInstances.get(LuaNatives.getThreadId(state.ptr, index));
         }
         if (type == LuaConsts.TYPE_USER_DATA || type == LuaConsts.TYPE_LIGHT_USER_DATA) {
             // TODO: userdata(s)
