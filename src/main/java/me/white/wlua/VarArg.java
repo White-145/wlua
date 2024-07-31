@@ -13,10 +13,6 @@ public class VarArg {
         this(values.toArray(new LuaValue[0]));
     }
 
-    public VarArg() {
-        this(new LuaValue[0]);
-    }
-
     public LuaValue[] getValues() {
         return values;
     }
@@ -36,6 +32,9 @@ public class VarArg {
     }
 
     public VarArg conform(int size) {
+        if (size == values.length) {
+            return this;
+        }
         LuaValue[] newValues = new LuaValue[size];
         System.arraycopy(values, 0, newValues, 0, Math.min(size, values.length));
         if (values.length < size) {
@@ -43,7 +42,7 @@ public class VarArg {
                 newValues[i] = LuaValue.nil();
             }
         }
-        this.values = newValues;
+        values = newValues;
         return this;
     }
 }

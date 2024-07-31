@@ -185,47 +185,47 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
             checkIsAlive();
             return TableRefValue.this.size();
         }
+    }
 
-        private class TableIterator implements Iterator<Entry<LuaValue, LuaValue>> {
-            LuaValue key = LuaValue.nil();
+    private class TableIterator implements Iterator<Entry<LuaValue, LuaValue>> {
+        LuaValue key = LuaValue.nil();
 
-            @Override
-            public boolean hasNext() {
-                checkIsAlive();
-                push(state);
-                key.push(state);
-                boolean hasNext = LuaNatives.lua_next(state.ptr, -2) == 1;
-                LuaNatives.lua_pop(state.ptr, hasNext ? 3 : 1);
-                return hasNext;
-            }
+        @Override
+        public boolean hasNext() {
+            checkIsAlive();
+            push(state);
+            key.push(state);
+            boolean hasNext = LuaNatives.lua_next(state.ptr, -2) == 1;
+            LuaNatives.lua_pop(state.ptr, hasNext ? 3 : 1);
+            return hasNext;
+        }
 
-            @Override
-            public Entry<LuaValue, LuaValue> next() {
-                checkIsAlive();
-                push(state);
-                key.push(state);
-                if (LuaNatives.lua_next(state.ptr, -2) == 0) {
-                    LuaNatives.lua_pop(state.ptr, 1);
-                    throw new NoSuchElementException();
-                }
-                key = LuaValue.from(state, -2);
-                LuaValue value = LuaValue.from(state, -1);
-                LuaNatives.lua_pop(state.ptr, 3);
-                return new AbstractMap.SimpleEntry<>(key, value);
-            }
-
-            @Override
-            public void remove() {
-                checkIsAlive();
-                if (key instanceof NilValue) {
-                    throw new IllegalStateException();
-                }
-                push(state);
-                key.push(state);
-                LuaNatives.lua_pushnil(state.ptr);
-                LuaNatives.lua_settable(state.ptr, -3);
+        @Override
+        public Entry<LuaValue, LuaValue> next() {
+            checkIsAlive();
+            push(state);
+            key.push(state);
+            if (LuaNatives.lua_next(state.ptr, -2) == 0) {
                 LuaNatives.lua_pop(state.ptr, 1);
+                throw new NoSuchElementException();
             }
+            key = LuaValue.from(state, -2);
+            LuaValue value = LuaValue.from(state, -1);
+            LuaNatives.lua_pop(state.ptr, 3);
+            return new AbstractMap.SimpleEntry<>(key, value);
+        }
+
+        @Override
+        public void remove() {
+            checkIsAlive();
+            if (key instanceof NilValue) {
+                throw new IllegalStateException();
+            }
+            push(state);
+            key.push(state);
+            LuaNatives.lua_pushnil(state.ptr);
+            LuaNatives.lua_settable(state.ptr, -3);
+            LuaNatives.lua_pop(state.ptr, 1);
         }
     }
 }

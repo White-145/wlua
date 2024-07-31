@@ -16,7 +16,7 @@ public class TableValue extends LuaValue implements Map<LuaValue, LuaValue> {
         this.map = new HashMap<>(map);
     }
 
-    public TableRefValue ref(LuaState state) {
+    public TableRefValue toReference(LuaState state) {
         push(state);
         TableRefValue ref = new TableRefValue(state, -1);
         state.pop(1);
@@ -50,6 +50,9 @@ public class TableValue extends LuaValue implements Map<LuaValue, LuaValue> {
 
     @Override
     public LuaValue put(LuaValue key, LuaValue value) {
+        if (value instanceof NilValue) {
+            return map.remove(key);
+        }
         return map.put(key, value);
     }
 
