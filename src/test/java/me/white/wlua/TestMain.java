@@ -94,7 +94,6 @@ public class TestMain {
         assert ret.size() == 2;
         LuaValue retValue = ret.get(0);
         assert retValue instanceof StringValue && ((StringValue)retValue).getString().equals("string");
-
         state.setGlobal(func, "value");
         LuaValue value = state.getGlobal("value");
         assert value instanceof FunctionRefValue;

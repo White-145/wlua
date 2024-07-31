@@ -14,16 +14,16 @@ public class FunctionRefValue extends LuaValue.Ref {
         }
         int result = LuaNatives.lua_pcall(state.ptr, args.size(), LuaConsts.MULT_RET, 0);
         if (result != LuaConsts.OK) {
-            // TODO: make it into centralized lua error
+            // TODO: move it into centralized lua error
             String name = "Unknown";
             if (result == LuaConsts.ERR_RUN) {
-                name = "Syntax";
+                name = "Run";
             } else if (result == LuaConsts.ERR_MEM) {
                 name = "Memory";
             } else if (result == LuaConsts.ERR_ERR) {
                 name = "Error";
             }
-            String msg = ((StringValue) LuaValue.from(state, -1)).getString();
+            String msg = ((StringValue)LuaValue.from(state, -1)).getString();
             throw new IllegalStateException(name + ": " + msg);
         }
         int valueCount = LuaNatives.lua_gettop(state.ptr) - top;

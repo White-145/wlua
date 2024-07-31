@@ -21,16 +21,22 @@ public class LuaNatives {
             lua_pushstring(callerPtr, "error invoking java function");
             return -1;
         }
-        LuaValue[] values = new LuaValue[params];
+        LuaValue[] args = new LuaValue[params];
         for (int i = 0; i < params; ++i) {
-            values[i] = LuaValue.from(state, i - params);
+            args[i] = LuaValue.from(state, i - params);
         }
         state.pop(params);
-        VarArg results = ((FunctionValue)function).run(state, new VarArg(values));
+        VarArg results;
+        try {
+            results = ((FunctionValue)function).run(state, new VarArg(args));
+        } catch (Exception e) {
+            LuaValue.of(e.getMessage()).push(state);
+            return LuaConsts.ERR_RUN;
+        }
         for (LuaValue value : results.getValues()) {
             value.push(state);
         }
-        return 0;
+        return results.size();
     }
 
     private static int adopt(int mainId, long ptr) {
@@ -60,7 +66,7 @@ public class LuaNatives {
     jmethodID adopt_method;
     jmethodID throwable_tostring_method;
 
-    int update_env(JNIEnv * env) {
+    int update_env(JNIEnv* env) {
         if (env->GetJavaVM(&java_vm) == 0) {
             env_version = env->GetVersion();
             return 0;

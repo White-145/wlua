@@ -177,6 +177,7 @@ public abstract class LuaValue {
 
             @Override
             public void run() {
+                System.out.println("clean!!!");
                 if (!state.isClosed() && state.aliveReferences.contains(reference)) {
                     LuaNatives.luaL_unref(state.ptr, LuaConsts.REGISTRY_INDEX, reference);
                     state.aliveReferences.remove(reference);
