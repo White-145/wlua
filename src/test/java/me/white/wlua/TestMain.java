@@ -47,7 +47,7 @@ public class TestMain {
     }
 
     private static void testTable(LuaState state) {
-        TableRefValue table = new TableValue().ref(state);
+        TableRefValue table = new TableValue().toReference(state);
         assert table.isEmpty();
         table.put(LuaValue.of("kind value"), LuaValue.of(true));
         table.put(LuaValue.of("evil value"), LuaValue.of(false));
