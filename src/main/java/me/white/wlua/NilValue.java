@@ -2,7 +2,7 @@ package me.white.wlua;
 
 public class NilValue extends LuaValue {
     @Override
-    protected void push(LuaState state) {
+    void push(LuaState state) {
         LuaNatives.lua_pushnil(state.ptr);
     }
 

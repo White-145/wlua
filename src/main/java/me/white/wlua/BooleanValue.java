@@ -12,7 +12,7 @@ public class BooleanValue extends LuaValue {
     }
 
     @Override
-    protected void push(LuaState state) {
+    void push(LuaState state) {
         state.checkIsAlive();
         LuaNatives.lua_pushboolean(state.ptr, value ? 1 : 0);
     }

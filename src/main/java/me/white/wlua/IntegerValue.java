@@ -12,7 +12,7 @@ public class IntegerValue extends LuaValue {
     }
 
     @Override
-    protected void push(LuaState state) {
+    void push(LuaState state) {
         state.checkIsAlive();
         LuaNatives.lua_pushinteger(state.ptr, value);
     }

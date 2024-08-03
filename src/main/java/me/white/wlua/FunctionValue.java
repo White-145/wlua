@@ -16,7 +16,7 @@ public class FunctionValue extends LuaValue {
     }
 
     @Override
-    protected void push(LuaState state) {
+    void push(LuaState state) {
         state.checkIsAlive();
         LuaNatives.pushFunction(state.ptr, this);
     }

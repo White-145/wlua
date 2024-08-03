@@ -1,6 +1,10 @@
 package me.white.wlua;
 
 import com.badlogic.gdx.utils.SharedLibraryLoader;
+import me.white.wlua.annotation.LuaMetaMethod;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 public class LuaNatives {
     // @off
@@ -48,6 +52,67 @@ public class LuaNatives {
         });
     }
 
+    private static int invokeMeta(long callerPtr, int stateIndex, Object function) {
+        LuaState state = LuaInstances.get(stateIndex);
+        if (state == null) {
+            LuaNatives.lua_pushstring(callerPtr, "error getting lua state");
+            return -1;
+        }
+        if (!(function instanceof Method)) {
+            LuaNatives.lua_pushstring(callerPtr, "error getting java function");
+            return -1;
+        }
+        if (!((Method)function).isAnnotationPresent(LuaMetaMethod.class)) {
+            LuaNatives.lua_pushstring(callerPtr, "error getting java function");
+            return -1;
+        }
+        MetaMethodType type = ((Method)function).getAnnotation(LuaMetaMethod.class).value();
+        LuaValue userdata = LuaValue.from(state, 1);
+        if (!(userdata instanceof UserData)) {
+            LuaNatives.lua_pushstring(callerPtr, "error getting userdata");
+            return -1;
+        }
+        if (type.parameters == -1) {
+            int total = LuaNatives.lua_gettop(state.ptr);
+            LuaValue[] values = new LuaValue[total - 1];
+            for (int i = 0; i < total - 1; ++i) {
+                values[i] = LuaValue.from(state, i + 2);
+            }
+            state.pop(total);
+            Object returnValue;
+            try {
+                returnValue = ((Method)function).invoke(userdata, new VarArg(values));
+            } catch (InvocationTargetException | IllegalAccessException ignored) {
+                LuaNatives.lua_pushstring(callerPtr, "error invoking java function");
+                return -1;
+            }
+            if (returnValue instanceof VarArg) {
+                ((VarArg)returnValue).push(state);
+                return ((VarArg)returnValue).size();
+            }
+            return 0;
+        }
+        if (type.doubleReference) {
+            state.pop(1);
+        }
+        Object[] values = new Object[type.parameters];
+        for (int i = 0; i < type.parameters; ++i) {
+            values[i] = LuaValue.from(state, i - type.parameters);
+        }
+        Object returnValue;
+        try {
+            returnValue = ((Method)function).invoke(userdata, values);
+        } catch (InvocationTargetException | IllegalAccessException ignored) {
+            LuaNatives.lua_pushstring(callerPtr, "error invoking java function");
+            return -1;
+        }
+        if (returnValue instanceof LuaValue) {
+            ((LuaValue)returnValue).push(state);
+            return 1;
+        }
+        return 0;
+    }
+
     /*JNI
     extern "C" {
         #include "lua.h"
@@ -56,14 +121,14 @@ public class LuaNatives {
     }
 
     #define JAVA_STATE_INDEX "state_index"
-    #define JAVA_OBJECT_METATABLE "object_meta"
-    #define JAVA_FUNCTION_DATA "function_data"
+    #define JAVA_OBJECT_GC "object_gc"
 
     JavaVM* java_vm = NULL;
     jint env_version;
     jclass natives_class;
     jmethodID invoke_method;
     jmethodID adopt_method;
+    jmethodID invoke_meta_method;
     jmethodID throwable_tostring_method;
 
     int update_env(JNIEnv* env) {
@@ -148,8 +213,8 @@ public class LuaNatives {
         return return_or_error(env, L, value);
     }
 
-    int gc_java(lua_State* L) {
-        jobject* global_ref = (jobject*)luaL_checkudata(L, 1, JAVA_FUNCTION_DATA);
+    int object_gc(lua_State* L) {
+        jobject* global_ref = (jobject*)luaL_checkudata(L, 1, JAVA_OBJECT_GC);
         JNIEnv* env = get_env(L);
         env->DeleteGlobalRef(*global_ref);
         return 0;
@@ -158,6 +223,14 @@ public class LuaNatives {
     void copy_to_top(lua_State* L, int index) {
         lua_pushnil(L);
         lua_copy(L, index < 0 ? index - 1 : index, -1);
+    }
+
+    int meta_method_wrapper(lua_State* L) {
+        jobject* method = (jobject*)lua_touserdata(L, lua_upvalueindex(1));
+        int state_index = get_state_index(L);
+        JNIEnv* env = get_env(L);
+        int returns = env->CallStaticIntMethod(natives_class, invoke_meta_method, (jlong)L, (jint)state_index, *method);
+        return return_or_error(env, L, returns);
     }
     */
 
@@ -915,6 +988,7 @@ public class LuaNatives {
         }
         invoke_method = env->GetStaticMethodID(natives_class, "invoke", "(JILjava/lang/Object;I)I");
         adopt_method = env->GetStaticMethodID(natives_class, "adopt", "(IJ)I");
+        invoke_meta_method = env->GetStaticMethodID(natives_class, "invokeMeta", "(JILjava/lang/Object;)I");
         jclass throwable_class = env->FindClass("java/lang/Throwable");
         throwable_tostring_method = env->GetMethodID(throwable_class, "toString", "()Ljava/lang/String;");
         return (jint)(env->ExceptionOccurred() ? -1 : 0);
@@ -922,8 +996,8 @@ public class LuaNatives {
 
     public static native void initState(long ptr, int id); /*
         lua_State* L = (lua_State*)ptr;
-        if (luaL_newmetatable(L, JAVA_OBJECT_METATABLE) == 1) {
-            lua_pushcfunction(L, &gc_java);
+        if (luaL_newmetatable(L, JAVA_OBJECT_GC) == 1) {
+            lua_pushcfunction(L, &object_gc);
             lua_setfield(L, -2, "__gc");
         }
         lua_pop(L, 1);
@@ -949,13 +1023,14 @@ public class LuaNatives {
         lua_State* L = (lua_State*)ptr;
         jobject global_ref = env->NewGlobalRef(function);
         if (env->ExceptionOccurred()) {
-            lua_pushnil(L);
+            lua_pushstring(L, "error creating global reference");
+            lua_error(L);
             return;
         }
         lua_checkstack(L, 1);
         jobject* userdata = (jobject*)lua_newuserdatauv(L, sizeof(global_ref), 0);
         *userdata = global_ref;
-        luaL_setmetatable(L, JAVA_OBJECT_METATABLE);
+        luaL_setmetatable(L, JAVA_OBJECT_GC);
         lua_pushcclosure(L, &function_wrapper, 1);
     */
 
@@ -972,5 +1047,45 @@ public class LuaNatives {
         }
         lua_State* thread = lua_tothread(L, i);
         return get_state_index(thread);
+    */
+
+    // TODO: consider creating separate metatable for each userdata instance
+    public static native void setMetaMethod(long ptr, UserData userdata, String name, Method method, int index); /*
+        lua_State* L = (lua_State*)ptr;
+        lua_pushstring(L, name);
+
+        jobject global_ref = env->NewGlobalRef(method);
+        if (env->ExceptionOccurred()) {
+            lua_pushstring(L, "error creating global reference");
+            lua_error(L);
+            return;
+        }
+        jobject* method_userdata = (jobject*)lua_newuserdatauv(L, sizeof(global_ref), 0);
+        *method_userdata = global_ref;
+        luaL_setmetatable(L, JAVA_OBJECT_GC);
+
+        lua_pushcclosure(L, &meta_method_wrapper, 1);
+        lua_settable(L, (int)index < 0 ? (int)index - 2 : (int)index);
+    */
+
+    public static native void newUserData(long ptr, Object obj); /*
+        lua_State* L = (lua_State*)ptr;
+        jobject global_ref = env->NewGlobalRef(obj);
+        if (env->ExceptionOccurred()) {
+            lua_pushstring(L, "error creating global reference");
+            lua_error(L);
+            return;
+        }
+        jobject* userdata = (jobject*)lua_newuserdatauv(L, sizeof(global_ref), 0);
+        *userdata = global_ref;
+    */
+
+    public static native Object getUserData(long ptr, int index); /*
+        lua_State* L = (lua_State*)ptr;
+        if (!lua_isuserdata(L, index)) {
+            return NULL;
+        }
+        jobject* userdata = (jobject*)lua_touserdata(L, index);
+        return *userdata;
     */
 }

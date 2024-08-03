@@ -45,4 +45,18 @@ public class VarArg {
         values = newValues;
         return this;
     }
+
+    protected static VarArg collect(LuaState state, int amount) {
+        LuaValue[] values = new LuaValue[amount];
+        for (int i = 0; i < amount; ++i) {
+            values[i] = LuaValue.from(state, i - amount);
+        }
+        return new VarArg(values);
+    }
+
+    protected void push(LuaState state) {
+        for (LuaValue value : values) {
+            value.push(state);
+        }
+    }
 }

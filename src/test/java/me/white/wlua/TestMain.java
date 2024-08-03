@@ -1,12 +1,15 @@
 package me.white.wlua;
 
+import me.white.wlua.test.TestUserData;
+
 import java.util.HashMap;
 import java.util.Set;
 
 public class TestMain {
     public static void main(String[] args) {
         try (LuaState state = new LuaState()) {
-            testValues(state);
+//            testValues(state);
+            testUserData(state);
             assert LuaNatives.lua_gettop(state.ptr) == 0;
         }
     }
@@ -44,6 +47,7 @@ public class TestMain {
 
         testTable(state);
         testFunction(state);
+        testUserData(state);
     }
 
     private static void testTable(LuaState state) {
@@ -102,5 +106,13 @@ public class TestMain {
         retValue = ret.get(0);
         assert retValue instanceof StringValue && ((StringValue)retValue).getString().equals("string");
         value.unref();
+    }
+
+    private static void testUserData(LuaState state) {
+        state.setGlobal(new TestUserData(), "test");
+        state.openLibs();
+        state.run("""
+                test(1, 2)
+                """);
     }
 }

@@ -34,7 +34,16 @@ public abstract class LuaValue {
             return LuaInstances.get(LuaNatives.getThreadId(state.ptr, index));
         }
         if (type == LuaConsts.TYPE_USER_DATA || type == LuaConsts.TYPE_LIGHT_USER_DATA) {
-            // TODO: userdata(s)
+            Object userdata = LuaNatives.getUserData(state.ptr, index);
+            if (userdata == null) {
+                // TODO: maybe throw an error?
+                return nil();
+            }
+            if (!(userdata instanceof UserData)) {
+                // TODO: ^
+                return nil();
+            }
+            return (UserData)userdata;
         }
         return nil();
     }
@@ -105,7 +114,7 @@ public abstract class LuaValue {
         return equals(state, this, other);
     }
 
-    protected abstract void push(LuaState state);
+    abstract void push(LuaState state);
 
     public void unref() { }
 
@@ -144,7 +153,7 @@ public abstract class LuaValue {
         }
 
         @Override
-        protected void push(LuaState state) {
+        void push(LuaState state) {
             checkIsAlive();
             if (this.state.mainThread != state.mainThread) {
                 throw new IllegalStateException("Cannot move references between threads.");
