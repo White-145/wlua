@@ -1,6 +1,7 @@
 package me.white.wlua;
 
 public class TestUserData extends UserData {
+    private LuaValue qux = LuaValue.nil();
     public LuaValue bar = LuaValue.of("baz");
 
     @LuaFunction("foo")
@@ -38,16 +39,32 @@ public class TestUserData extends UserData {
         return LuaValue.of("length");
     }
 
-     @LuaField("bar")
-     public LuaValue getBar(LuaState state) {
+    @LuaField("bar")
+    public LuaValue getBar(LuaState state) {
         if (bar instanceof NumberValue) {
             return new NumberValue(((NumberValue)bar).getNumber() * 2);
         }
         return bar;
-     }
+    }
 
-     @LuaField("bar")
-     public void setBar(LuaState state, LuaValue value) {
+    @LuaField("bar")
+    public void setBar(LuaState state, LuaValue value) {
         bar = value;
-     }
+    }
+
+    @LuaMetaMethod(MetaMethodType.INDEX)
+    public LuaValue index(LuaState state, LuaValue key) {
+        if (!key.equals(LuaValue.of("qux"))) {
+            return null;
+        }
+        return qux;
+    }
+
+    @LuaMetaMethod(MetaMethodType.NEW_INDEX)
+    public void newIndex(LuaState state, LuaValue key, LuaValue value) {
+        if (!key.equals(LuaValue.of("qux"))) {
+            return;
+        }
+        qux = value;
+    }
 }

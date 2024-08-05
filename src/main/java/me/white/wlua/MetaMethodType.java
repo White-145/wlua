@@ -22,8 +22,12 @@ public enum MetaMethodType {
     EQUALS("__eq", 1, 1, false),
     LESS_THAN("__lt", 1, 1 , false),
     LESS_EQUAL("__le", 1, 1, false),
-    CALL("__call", -1, -1, false);
-    // '__gc', '__name', '__index' and '__newindex' are used by c-java interface, '__mode' and '__close' are unused
+    CALL("__call", -1, -1, false),
+    INDEX(null, 1, 1, false),
+    NEW_INDEX(null, 0, 2, false);
+    // '__gc' and '__name' are used by c-java interface
+    // '__mode' and '__close' are unused
+    // '__index' and '__newindex' are wrapped
 
     final String metaMethod;
     final int returns;

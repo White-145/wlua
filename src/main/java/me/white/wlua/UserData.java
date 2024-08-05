@@ -113,7 +113,9 @@ public abstract class UserData extends LuaValue {
         boolean isNew = LuaNatives.newMetaTable(state.ptr, metaTableName) == 1;
         if (isNew) {
             for (MetaMethodType type : metaMethods.keySet()) {
-                LuaNatives.setMetaMethod(state.ptr, type.metaMethod, type.ordinal(), -1);
+                if (type.metaMethod != null) {
+                    LuaNatives.setMetaMethod(state.ptr, type.metaMethod, type.ordinal(), -1);
+                }
             }
 
             // TODO: allow specifying the __name field

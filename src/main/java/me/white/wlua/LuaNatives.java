@@ -5,6 +5,7 @@ import com.badlogic.gdx.utils.SharedLibraryLoader;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 public class LuaNatives {
     // @off
@@ -100,7 +101,6 @@ public class LuaNatives {
     }
 
     public static int index(long callerPtr, int stateIndex) {
-        // TODO: allow to add __index, __newindex for the cases when this fails
         LuaState state = LuaInstances.get(stateIndex);
         if (state == null) {
             return error(callerPtr, "error getting lua state");
@@ -110,53 +110,67 @@ public class LuaNatives {
             return error(callerPtr, "error getting userdata");
         }
         UserData userdata = (UserData)userdataValue;
-        LuaValue value = LuaValue.from(state, -1);
+        LuaValue key = LuaValue.from(state, -1);
         state.pop(2);
-        if (!(value instanceof StringValue)) {
-            return 0;
-        }
-        String name = ((StringValue)value).getString();
-        if (userdata.fields.containsKey(name)) {
-            Field field = userdata.fields.get(name);
-            Object result;
-            try {
-                result = field.get(userdata);
-            } catch (IllegalAccessException ignored) {
-                return error(callerPtr, "error getting field");
-            }
-            if (result instanceof LuaValue) {
-                ((LuaValue)result).push(state);
-            } else {
-                LuaNatives.lua_pushnil(state.ptr);
-            }
-            return 1;
-        }
-        if (userdata.functions.containsKey(name)) {
-            Method method = userdata.functions.get(name);
-            LuaValue.of((lua, args) -> {
+        if (key instanceof StringValue) {
+            String name = ((StringValue)key).getString();
+            if (userdata.fields.containsKey(name)) {
+                Field field = userdata.fields.get(name);
                 Object result;
                 try {
-                    result = method.invoke(userdata, lua, args);
-                } catch (IllegalAccessException | InvocationTargetException ignored) {
-                    throw new IllegalStateException("Could not invoke java function '" + method.getName() + "'.");
+                    result = field.get(userdata);
+                } catch (IllegalAccessException ignored) {
+                    return error(callerPtr, "error getting field");
                 }
-                if (result instanceof VarArg) {
-                    return (VarArg)result;
+                if (result instanceof LuaValue) {
+                    ((LuaValue)result).push(state);
+                } else {
+                    LuaNatives.lua_pushnil(state.ptr);
                 }
-                return new VarArg();
-            }).push(state);
-            return 1;
-        }
-        if (userdata.getters.containsKey(name)) {
-            Method method = userdata.getters.get(name);
-            Object result;
-            try {
-                result = method.invoke(userdata, state);
-            } catch (IllegalAccessException | InvocationTargetException ignored) {
-                return error(callerPtr, "error invoking getter");
+                return 1;
             }
-            if (result instanceof LuaValue) {
-                ((LuaValue)result).push(state);
+            if (userdata.functions.containsKey(name)) {
+                Method method = userdata.functions.get(name);
+                LuaValue.of((lua, args) -> {
+                    Object result;
+                    try {
+                        result = method.invoke(userdata, lua, args);
+                    } catch (IllegalAccessException | InvocationTargetException ignored) {
+                        throw new IllegalStateException("Could not invoke java function '" + method.getName() + "'.");
+                    }
+                    if (result instanceof VarArg) {
+                        return (VarArg)result;
+                    }
+                    return new VarArg();
+                }).push(state);
+                return 1;
+            }
+            if (userdata.getters.containsKey(name)) {
+                Method method = userdata.getters.get(name);
+                Object result;
+                try {
+                    result = method.invoke(userdata, state);
+                } catch (IllegalAccessException | InvocationTargetException ignored) {
+                    return error(callerPtr, "error invoking java function");
+                }
+                if (result instanceof LuaValue) {
+                    ((LuaValue)result).push(state);
+                } else {
+                    LuaNatives.lua_pushnil(state.ptr);
+                }
+                return 1;
+            }
+        }
+        if (userdata.metaMethods.containsKey(MetaMethodType.INDEX)) {
+            Method method = userdata.metaMethods.get(MetaMethodType.INDEX);
+            Object returns;
+            try {
+                returns = method.invoke(userdata, state, key);
+            } catch (IllegalAccessException | InvocationTargetException ignored) {
+                return error(callerPtr, "error invoking java function");
+            }
+            if (returns instanceof LuaValue) {
+                ((LuaValue)returns).push(state);
             } else {
                 LuaNatives.lua_pushnil(state.ptr);
             }
@@ -178,25 +192,36 @@ public class LuaNatives {
         LuaValue key = LuaValue.from(state, -2);
         LuaValue value = LuaValue.from(state, -1);
         state.pop(3);
-        if (!(key instanceof StringValue)) {
-            return 0;
-        }
-        String name = ((StringValue)key).getString();
-        if (userdata.fields.containsKey(name)) {
-            Field field = userdata.fields.get(name);
-            try {
-                field.set(userdata, value);
-            } catch (IllegalAccessException ignored) {
-                return error(callerPtr, "error setting field");
+        if (key instanceof StringValue) {
+            String name = ((StringValue)key).getString();
+            if (userdata.fields.containsKey(name)) {
+                Field field = userdata.fields.get(name);
+                if (Modifier.isFinal(field.getModifiers())) {
+                    return error(callerPtr, "error setting field");
+                }
+                try {
+                    field.set(userdata, value);
+                } catch (IllegalAccessException ignored) {
+                    return error(callerPtr, "error setting field");
+                }
+                return 1;
             }
-            return 1;
+            if (userdata.setters.containsKey(name)) {
+                Method method = userdata.setters.get(name);
+                try {
+                    method.invoke(userdata, state, value);
+                } catch (IllegalAccessException | InvocationTargetException ignored) {
+                    return error(callerPtr, "error invoking java function");
+                }
+                return 1;
+            }
         }
-        if (userdata.setters.containsKey(name)) {
-            Method method = userdata.setters.get(name);
+        if (userdata.metaMethods.containsKey(MetaMethodType.NEW_INDEX)) {
+            Method method = userdata.metaMethods.get(MetaMethodType.NEW_INDEX);
             try {
-                method.invoke(userdata, state, value);
+                method.invoke(userdata, state, key, value);
             } catch (IllegalAccessException | InvocationTargetException ignored) {
-                return error(callerPtr, "error invoking setter");
+                return error(callerPtr, "error invoking java function");
             }
             return 1;
         }

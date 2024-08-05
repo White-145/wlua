@@ -123,5 +123,10 @@ public class TestMain {
         assert test.bar.equals(LuaValue.of(9));
         state.run("value = test.foo(4)");
         assert state.getGlobal("value").equals(LuaValue.of(103));
+        state.run("test.qux = 7");
+        state.run("value = test.qux");
+        assert state.getGlobal("value").equals(LuaValue.of(7));
+        state.run("value = test.bat");
+        assert state.getGlobal("value").equals(LuaValue.nil());
     }
 }
