@@ -35,13 +35,8 @@ public abstract class LuaValue {
         }
         if (type == LuaConsts.TYPE_USER_DATA || type == LuaConsts.TYPE_LIGHT_USER_DATA) {
             Object userdata = LuaNatives.getUserData(state.ptr, index);
-            if (userdata == null) {
-                // TODO: maybe throw an error?
-                return nil();
-            }
             if (!(userdata instanceof UserData)) {
-                // TODO: ^
-                return nil();
+                throw new IllegalStateException("Could not get userdata value.");
             }
             return (UserData)userdata;
         }
@@ -83,19 +78,7 @@ public abstract class LuaValue {
     public static FunctionRefValue load(LuaState state, String chunk) {
         state.checkIsAlive();
         int code = LuaNatives.luaL_loadstring(state.ptr, chunk);
-        if (code != LuaConsts.OK) {
-            // TODO: centralized errors
-            String name = "Unknown";
-            if (code == LuaConsts.ERR_SYNTAX) {
-                name = "Syntax";
-            }
-            if (code == LuaConsts.ERR_MEM) {
-                name = "Memory";
-            }
-            String msg = ((StringValue)from(state, -1)).getString();
-            state.pop(1);
-            throw new IllegalStateException(name + " error: " + msg);
-        }
+        LuaException.checkError(code, state);
         LuaValue value = from(state, -1);
         state.pop(1);
         return (FunctionRefValue)value;

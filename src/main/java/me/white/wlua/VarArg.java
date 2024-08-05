@@ -51,6 +51,7 @@ public class VarArg {
         for (int i = 0; i < amount; ++i) {
             values[i] = LuaValue.from(state, i - amount);
         }
+        state.pop(amount);
         return new VarArg(values);
     }
 

@@ -30,7 +30,7 @@ public class BooleanValue extends LuaValue {
         if (!(obj instanceof BooleanValue)) {
             return false;
         }
-        return value == ((BooleanValue) obj).value;
+        return value == ((BooleanValue)obj).value;
     }
 
     @Override

@@ -1,6 +1,4 @@
-package me.white.wlua.annotation;
-
-import me.white.wlua.MetaMethodType;
+package me.white.wlua;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -9,6 +7,6 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-public @interface LuaMetaMethod {
-    MetaMethodType value();
+public @interface LuaFunction {
+    String value();
 }

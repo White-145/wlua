@@ -1,15 +1,12 @@
 package me.white.wlua;
 
-import me.white.wlua.test.TestUserData;
-
 import java.util.HashMap;
 import java.util.Set;
 
 public class TestMain {
     public static void main(String[] args) {
         try (LuaState state = new LuaState()) {
-//            testValues(state);
-            testUserData(state);
+            testValues(state);
             assert LuaNatives.lua_gettop(state.ptr) == 0;
         }
     }
@@ -109,10 +106,22 @@ public class TestMain {
     }
 
     private static void testUserData(LuaState state) {
-        state.setGlobal(new TestUserData(), "test");
+        TestUserData test = new TestUserData();
+        state.setGlobal(test, "test");
         state.openLibs();
-        state.run("""
-                test(1, 2)
-                """);
+        state.run("value = test(1, 2)");
+        assert state.getGlobal("value").equals(LuaValue.of(3));
+        state.run("value = test + 5");
+        assert state.getGlobal("value").equals(LuaValue.of(10));
+        state.run("value = #test");
+        assert state.getGlobal("value").equals(LuaValue.of("length"));
+        state.run("value = test.bar");
+        assert state.getGlobal("value").equals(LuaValue.of("baz"));
+        state.run("test.bar = 9");
+        state.run("value = test.bar");
+        assert state.getGlobal("value").equals(LuaValue.of(18));
+        assert test.bar.equals(LuaValue.of(9));
+        state.run("value = test.foo(4)");
+        assert state.getGlobal("value").equals(LuaValue.of(103));
     }
 }

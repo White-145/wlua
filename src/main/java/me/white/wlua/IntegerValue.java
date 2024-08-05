@@ -1,9 +1,15 @@
 package me.white.wlua;
 
-public class IntegerValue extends LuaValue {
+public class IntegerValue extends NumberValue {
     private long value;
 
+    public IntegerValue(double value) {
+        super(value);
+        this.value = (long)value;
+    }
+
     public IntegerValue(long value) {
+        super((double)value);
         this.value = value;
     }
 
@@ -20,17 +26,6 @@ public class IntegerValue extends LuaValue {
     @Override
     public String toString() {
         return String.valueOf(value);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-        if (!(obj instanceof IntegerValue)) {
-            return false;
-        }
-        return value == ((IntegerValue)obj).value;
     }
 
     @Override
