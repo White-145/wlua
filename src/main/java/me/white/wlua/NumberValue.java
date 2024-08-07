@@ -14,7 +14,7 @@ public class NumberValue extends LuaValue {
     @Override
     void push(LuaState state) {
         state.checkIsAlive();
-        LuaNatives.lua_pushnumber(state.ptr, value);
+        LuaNatives.pushNumber(state.ptr, value);
     }
 
     @Override

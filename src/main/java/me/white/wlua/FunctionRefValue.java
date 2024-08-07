@@ -7,11 +7,13 @@ public class FunctionRefValue extends LuaValue.Ref {
 
     public VarArg run(LuaState state, VarArg args) {
         checkIsAlive();
-        int top = LuaNatives.lua_gettop(state.ptr);
+        int top = LuaNatives.getTop(state.ptr);
         push(state);
         args.push(state);
-        int code = LuaNatives.lua_pcall(state.ptr, args.size(), LuaConsts.MULT_RET, 0);
+        // TODO: pcall
+        int code = LuaNatives.protectedCall(state.ptr, args.size(), LuaConsts.MULT_RET);
         LuaException.checkError(code, state);
-        return VarArg.collect(state, LuaNatives.lua_gettop(state.ptr) - top);
+        int amount = LuaNatives.getTop(state.ptr) - top;
+        return VarArg.collect(state, amount);
     }
 }

@@ -15,28 +15,15 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
     @Override
     public int size() {
         checkIsAlive();
-        int length = 0;
-        push(state);
-        LuaValue.nil().push(state);
-        while (LuaNatives.lua_next(state.ptr, -2) == 1) {
-            length += 1;
-            state.pop(1);
-        }
-        state.pop(1);
-        return length;
+        state.pushValue(this);
+        return LuaNatives.tableSize(state.ptr);
     }
 
     @Override
     public boolean isEmpty() {
         checkIsAlive();
-        push(state);
-        LuaValue.nil().push(state);
-        if (LuaNatives.lua_next(state.ptr, -2) == 1) {
-            state.pop(3);
-            return false;
-        }
-        state.pop(1);
-        return true;
+        state.pushValue(this);
+        return LuaNatives.isTableEmpty(state.ptr);
     }
 
     @Override
@@ -45,12 +32,9 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
         if (!(key instanceof LuaValue)) {
             return false;
         }
-        push(state);
-        ((LuaValue)key).push(state);
-        LuaNatives.lua_gettable(state.ptr, -2);
-        boolean contains = LuaNatives.lua_isnil(state.ptr, -1) == 0;
-        state.pop(2);
-        return contains;
+        state.pushValue(this);
+        state.pushValue((LuaValue)key);
+        return LuaNatives.tableContainsKey(state.ptr);
     }
 
     @Override
@@ -59,18 +43,9 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
         if (!(value instanceof LuaValue)) {
             return false;
         }
-        ((LuaValue)value).push(state);
-        push(state);
-        LuaValue.nil().push(state);
-        while (LuaNatives.lua_next(state.ptr, -2) == 1) {
-            if (LuaNatives.lua_compare(state.ptr, -4, -1, LuaConsts.OP_EQ) == 1) {
-                state.pop(4);
-                return true;
-            }
-            state.pop(1);
-        }
-        state.pop(2);
-        return false;
+        state.pushValue(this);
+        state.pushValue((LuaValue)value);
+        return LuaNatives.tableContainsValue(state.ptr);
     }
 
     @Override
@@ -79,9 +54,9 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
         if (!(key instanceof LuaValue)) {
             return null;
         }
-        push(state);
-        ((LuaValue)key).push(state);
-        LuaNatives.lua_gettable(state.ptr, -2);
+        state.pushValue(this);
+        state.pushValue((LuaValue)key);
+        LuaNatives.tableGet(state.ptr);
         LuaValue returnValue = LuaValue.from(state, -1);
         state.pop(2);
         return returnValue;
@@ -90,16 +65,16 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
     @Override
     public LuaValue put(LuaValue key, LuaValue value) {
         checkIsAlive();
-        push(state);
-        key.push(state);
-        LuaNatives.lua_gettable(state.ptr, -2);
+        state.pushValue(this);
+        state.pushValue(key);
+        LuaNatives.tableGet(state.ptr);
         LuaValue returnValue = LuaValue.from(state, -1);
         state.pop(1);
-        key.push(state);
-        value.push(state);
-        LuaNatives.lua_settable(state.ptr, -3);
+        state.pushValue(key);
+        state.pushValue(value);
+        LuaNatives.tableSet(state.ptr);
         state.pop(1);
-        return returnValue;
+        return returnValue instanceof NilValue ? null : returnValue;
     }
 
     @Override
@@ -114,11 +89,11 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
     @Override
     public void putAll(Map<? extends LuaValue, ? extends LuaValue> m) {
         checkIsAlive();
-        push(state);
+        state.pushValue(this);
         for (Entry<? extends LuaValue, ? extends LuaValue> entry : m.entrySet()) {
-            entry.getKey().push(state);
-            entry.getValue().push(state);
-            LuaNatives.lua_settable(state.ptr, -3);
+            state.pushValue(entry.getKey());
+            state.pushValue(entry.getValue());
+            LuaNatives.tableSet(state.ptr);
         }
         state.pop(1);
     }
@@ -126,26 +101,17 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
     @Override
     public void clear() {
         checkIsAlive();
-        push(state);
-        LuaValue key = LuaValue.nil();
-        key.push(state);
-        while (LuaNatives.lua_next(state.ptr, -2) == 1) {
-            state.pop(1);
-            key = LuaValue.from(state, -1);
-            LuaValue.nil().push(state);
-            LuaNatives.lua_settable(state.ptr, -3);
-            key.push(state);
-        }
-        state.pop(1);
+        state.pushValue(this);
+        LuaNatives.tableClear(state.ptr);
     }
 
     @Override
     public Set<LuaValue> keySet() {
         checkIsAlive();
         Set<LuaValue> keys = new HashSet<>();
-        push(state);
-        LuaValue.nil().push(state);
-        while (LuaNatives.lua_next(state.ptr, -2) == 1) {
+        state.pushValue(this);
+        state.pushValue(LuaValue.nil());
+        while (LuaNatives.tableNext(state.ptr)) {
             state.pop(1);
             keys.add(LuaValue.from(state, -1));
         }
@@ -157,9 +123,9 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
     public Collection<LuaValue> values() {
         checkIsAlive();
         Set<LuaValue> values = new HashSet<>();
-        push(state);
-        LuaValue.nil().push(state);
-        while (LuaNatives.lua_next(state.ptr, -2) == 1) {
+        state.pushValue(this);
+        state.pushValue(LuaValue.nil());
+        while (LuaNatives.tableNext(state.ptr)) {
             values.add(LuaValue.from(state, -1));
             state.pop(1);
         }
@@ -188,14 +154,14 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
     }
 
     private class TableIterator implements Iterator<Entry<LuaValue, LuaValue>> {
-        LuaValue key = LuaValue.nil();
+        private LuaValue key = LuaValue.nil();
 
         @Override
         public boolean hasNext() {
             checkIsAlive();
-            push(state);
-            key.push(state);
-            boolean hasNext = LuaNatives.lua_next(state.ptr, -2) == 1;
+            state.pushValue(TableRefValue.this);
+            state.pushValue(key);
+            boolean hasNext = LuaNatives.tableNext(state.ptr);
             state.pop(hasNext ? 3 : 1);
             return hasNext;
         }
@@ -203,9 +169,9 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
         @Override
         public Entry<LuaValue, LuaValue> next() {
             checkIsAlive();
-            push(state);
-            key.push(state);
-            if (LuaNatives.lua_next(state.ptr, -2) == 0) {
+            state.pushValue(TableRefValue.this);
+            state.pushValue(key);
+            if (!LuaNatives.tableNext(state.ptr)) {
                 state.pop(1);
                 throw new NoSuchElementException();
             }
@@ -221,10 +187,9 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
             if (key instanceof NilValue) {
                 throw new IllegalStateException();
             }
-            push(state);
-            key.push(state);
-            LuaNatives.lua_pushnil(state.ptr);
-            LuaNatives.lua_settable(state.ptr, -3);
+            state.pushValue(TableRefValue.this);
+            state.pushValue(key);
+            LuaNatives.tableRemove(state.ptr);
             state.pop(1);
         }
     }

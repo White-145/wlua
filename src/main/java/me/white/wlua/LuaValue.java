@@ -6,23 +6,23 @@ import java.util.*;
 public abstract class LuaValue {
     private static final Cleaner CLEANER = Cleaner.create();
 
-    protected static LuaValue from(LuaState state, int index) {
+    static LuaValue from(LuaState state, int index) {
         state.checkIsAlive();
-        int type = LuaNatives.lua_type(state.ptr, index);
+        int type = LuaNatives.getType(state.ptr, index);
         if (type == LuaConsts.TYPE_NONE || type == LuaConsts.TYPE_NIL) {
             return nil();
         }
         if (type == LuaConsts.TYPE_BOOLEAN) {
-            return of(LuaNatives.lua_toboolean(state.ptr, index) == 1);
+            return of(LuaNatives.toBoolean(state.ptr, index));
         }
         if (type == LuaConsts.TYPE_NUMBER) {
-            if (LuaNatives.lua_isinteger(state.ptr, index) == 1) {
-                return of(LuaNatives.lua_tointeger(state.ptr, index));
+            if (LuaNatives.isInteger(state.ptr, index)) {
+                return of(LuaNatives.toInteger(state.ptr, index));
             }
-            return of(LuaNatives.lua_tonumber(state.ptr, index));
+            return of(LuaNatives.toNumber(state.ptr, index));
         }
         if (type == LuaConsts.TYPE_STRING) {
-            return of(LuaNatives.lua_tostring(state.ptr, index));
+            return of(LuaNatives.toString(state.ptr, index));
         }
         if (type == LuaConsts.TYPE_TABLE) {
             return new TableRefValue(state, index);
@@ -68,16 +68,16 @@ public abstract class LuaValue {
     }
 
     public static NilValue of() {
-        return new NilValue();
+        return nil();
     }
 
     public static NilValue nil() {
         return new NilValue();
     }
 
-    public static FunctionRefValue load(LuaState state, String chunk) {
+    public static FunctionRefValue chunk(LuaState state, String chunk) {
         state.checkIsAlive();
-        int code = LuaNatives.luaL_loadstring(state.ptr, chunk);
+        int code = LuaNatives.loadString(state.ptr, chunk);
         LuaException.checkError(code, state);
         LuaValue value = from(state, -1);
         state.pop(1);
@@ -86,9 +86,9 @@ public abstract class LuaValue {
 
     public static boolean equals(LuaState state, LuaValue value1, LuaValue value2) {
         state.checkIsAlive();
-        value1.push(state);
-        value2.push(state);
-        boolean equals = LuaNatives.lua_compare(state.ptr, -2, -1, LuaConsts.OP_EQ) == 1;
+        state.pushValue(value1);
+        state.pushValue(value2);
+        boolean equals = LuaNatives.compareValues(state.ptr, -2, -1, LuaConsts.OP_EQ);
         state.pop(2);
         return equals;
     }
@@ -110,7 +110,7 @@ public abstract class LuaValue {
         protected Ref(LuaState state, int index) {
             state.checkIsAlive();
             this.state = state;
-            this.reference = LuaNatives.getRef(state.ptr, index);
+            this.reference = LuaNatives.newRef(state.ptr, index);
             state.aliveReferences.add(reference);
             cleanableRef = new CleanableRef(state, reference);
             cleanable = CLEANER.register(this, cleanableRef);
@@ -129,7 +129,7 @@ public abstract class LuaValue {
         @Override
         public void unref() {
             if (!state.isClosed() && state.aliveReferences.contains(reference)) {
-                LuaNatives.luaL_unref(state.ptr, LuaConsts.REGISTRY_INDEX, reference);
+                LuaNatives.deleteRef(state.ptr, reference);
                 state.aliveReferences.remove(reference);
             }
             cleanable.clean();
@@ -141,7 +141,7 @@ public abstract class LuaValue {
             if (this.state.mainThread != state.mainThread) {
                 throw new IllegalStateException("Cannot move references between threads.");
             }
-            LuaNatives.lua_rawgeti(state.ptr, LuaConsts.REGISTRY_INDEX, reference);
+            LuaNatives.getRef(state.ptr, reference);
         }
 
         @Override
@@ -173,7 +173,7 @@ public abstract class LuaValue {
             @Override
             public void run() {
                 if (!state.isClosed() && state.aliveReferences.contains(reference)) {
-                    LuaNatives.luaL_unref(state.ptr, LuaConsts.REGISTRY_INDEX, reference);
+                    LuaNatives.deleteRef(state.ptr, reference);
                     state.aliveReferences.remove(reference);
                 }
             }

@@ -7,7 +7,7 @@ public class TestMain {
     public static void main(String[] args) {
         try (LuaState state = new LuaState()) {
             testValues(state);
-            assert LuaNatives.lua_gettop(state.ptr) == 0;
+            assert LuaNatives.getTop(state.ptr) == 0;
         }
     }
 
@@ -128,6 +128,7 @@ public class TestMain {
         assert state.getGlobal("value").equals(LuaValue.of(7));
         state.run("value = test.bat");
         assert state.getGlobal("value").equals(LuaValue.nil());
-        state.run("print(test)");
+        state.run("value = tostring(test)");
+        assert ((StringValue)state.getGlobal("value")).getString().startsWith("Qwerty Data: ");
     }
 }

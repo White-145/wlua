@@ -13,7 +13,7 @@ public class LuaState extends LuaValue implements AutoCloseable {
     private boolean isClosed = false;
     private int id;
 
-    protected LuaState(long ptr, int state_id, LuaState mainThread) {
+    LuaState(long ptr, int state_id, LuaState mainThread) {
         if (ptr == 0) {
             throw new IllegalStateException("Could not create new lua state.");
         }
@@ -27,40 +27,45 @@ public class LuaState extends LuaValue implements AutoCloseable {
         this(LuaNatives.newState(), -1, null);
     }
 
+    void addSubThread(LuaState thread) {
+        checkIsAlive();
+        subThreads.add(thread);
+    }
+
+    void pop(int n) {
+        checkIsAlive();
+        LuaNatives.pop(ptr, n);
+    }
+
+    void pushValue(LuaValue value) {
+        checkIsAlive();
+        value.push(this);
+    }
+
     public void checkIsAlive() {
         if (isClosed()) {
             throw new IllegalStateException("Could not use closed lua state.");
         }
     }
 
-    protected void addSubThread(LuaState thread) {
-        checkIsAlive();
-        subThreads.add(thread);
-    }
-
     public boolean isSubThread(LuaState thread) {
         return thread == this || subThreads.contains(thread);
     }
 
-    protected void pop(int n) {
-        checkIsAlive();
-        LuaNatives.pop(ptr, n);
-    }
-
     public void openLibs() {
         checkIsAlive();
-        LuaNatives.luaL_openlibs(ptr);
+        LuaNatives.openLibs(ptr);
     }
 
     public void setGlobal(LuaValue value, String name) {
         checkIsAlive();
         value.push(this);
-        LuaNatives.lua_setglobal(ptr, name);
+        LuaNatives.setGlobal(ptr, name);
     }
 
     public LuaValue getGlobal(String name) {
         checkIsAlive();
-        LuaNatives.lua_getglobal(ptr, name);
+        LuaNatives.getGlobal(ptr, name);
         LuaValue value = LuaValue.from(this, -1);
         pop(1);
         return value;
@@ -68,7 +73,7 @@ public class LuaState extends LuaValue implements AutoCloseable {
 
     public void run(String chunk) {
         checkIsAlive();
-        LuaValue.load(this, chunk).run(this, new VarArg());
+        LuaValue.chunk(this, chunk).run(this, new VarArg());
     }
 
     public boolean isClosed() {
@@ -76,12 +81,12 @@ public class LuaState extends LuaValue implements AutoCloseable {
     }
 
     @Override
-    protected void push(LuaState state) {
+    void push(LuaState state) {
         state.checkIsAlive();
         if (state.mainThread.isSubThread(this)) {
             throw new IllegalStateException("Could not push thread to the separate lua state.");
         }
-        LuaNatives.lua_pushthread(ptr);
+        LuaNatives.pushThread(ptr);
     }
 
     @Override
@@ -95,7 +100,7 @@ public class LuaState extends LuaValue implements AutoCloseable {
             }
             subThreads.clear();
             LuaInstances.remove(id);
-            LuaNatives.lua_close(ptr);
+            LuaNatives.closeState(ptr);
         } else {
             mainThread.subThreads.remove(this);
             LuaInstances.remove(id);

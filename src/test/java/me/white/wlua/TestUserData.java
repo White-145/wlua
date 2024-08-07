@@ -67,4 +67,9 @@ public class TestUserData extends UserData {
         }
         qux = value;
     }
+
+    @Override
+    public String getName() {
+        return "Qwerty Data";
+    }
 }

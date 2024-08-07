@@ -36,7 +36,9 @@ public class LuaInstances {
             do {
                 states.removeLast();
             } while (freeIndices.contains(states.size() - 1));
-            freeIndices.removeIf(j -> j >= states.size());
+            while (!freeIndices.isEmpty() && freeIndices.getLast() >= states.size()) {
+                freeIndices.removeLast();
+            }
         } else if (i >= 0 && i < states.size() && !freeIndices.contains(i)) {
             freeIndices.add(i);
             states.set(i, null);

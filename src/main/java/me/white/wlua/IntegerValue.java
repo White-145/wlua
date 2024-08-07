@@ -20,7 +20,7 @@ public class IntegerValue extends NumberValue {
     @Override
     void push(LuaState state) {
         state.checkIsAlive();
-        LuaNatives.lua_pushinteger(state.ptr, value);
+        LuaNatives.pushInteger(state.ptr, value);
     }
 
     @Override
