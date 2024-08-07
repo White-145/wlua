@@ -26,20 +26,25 @@ class LuaNatives {
         if (state == null) {
             return error(callerPtr, "error getting lua state");
         }
-        if (!(function instanceof FunctionValue)) {
+        state.checkIsAlive();
+        if (!(function instanceof FunctionValue.Function)) {
             return error(callerPtr, "error invoking java function");
         }
         VarArg args = VarArg.collect(state, params);
-        VarArg results = ((FunctionValue)function).run(state, args);
+        VarArg results = ((FunctionValue.Function)function).run(state, args);
         results.push(state);
         return results.size();
     }
 
     private static int adopt(int mainId, long ptr) {
-        LuaState lua = LuaInstances.get(mainId);
+        LuaState state = LuaInstances.get(mainId);
+        if (state == null) {
+            return error(ptr, "error getting lua state");
+        }
+        state.checkIsAlive();
         return LuaInstances.add((id) -> {
-            LuaState child = new LuaState(ptr, id, lua);
-            lua.addSubThread(child);
+            LuaState child = new LuaState(ptr, id, state);
+            state.addSubThread(child);
             return child;
         });
     }
@@ -49,6 +54,7 @@ class LuaNatives {
         if (state == null) {
             return error(callerPtr, "error getting lua state");
         }
+        state.checkIsAlive();
         MetaMethodType type = MetaMethodType.values()[metaMethodType];
         LuaValue userdata = LuaValue.from(state, 1);
         LuaNatives.remove(state.ptr, 1);
@@ -105,6 +111,7 @@ class LuaNatives {
         if (state == null) {
             return error(callerPtr, "error getting lua state");
         }
+        state.checkIsAlive();
         LuaValue userdataValue = LuaValue.from(state, -2);
         LuaValue key = LuaValue.from(state, -1);
         if (!(userdataValue instanceof UserData)) {
@@ -184,6 +191,7 @@ class LuaNatives {
         if (state == null) {
             return error(callerPtr, "error getting lua state");
         }
+        state.checkIsAlive();
         LuaValue userdataValue = LuaValue.from(state, -3);
         if (!(userdataValue instanceof UserData)) {
             return error(callerPtr, "error getting userdata");
@@ -282,7 +290,7 @@ class LuaNatives {
     int create_new_id(lua_State* L) {
         int main_id = get_main_thread_id(L);
         JNIEnv* env = get_env(L);
-        int new_id = env->CallStaticIntMethod(natives_class, adopt_method, main_id, (jlong)L);
+        int new_id = env->CallStaticIntMethod(natives_class, adopt_method, (jint)main_id, (jlong)L);
         lua_pushthread(L);
         lua_pushinteger(L, new_id);
         lua_settable(L, LUA_REGISTRYINDEX);
@@ -776,7 +784,7 @@ class LuaNatives {
         lua_pushthread(L);
     */
 
-    static native void pushFunction(long ptr, FunctionValue function); /*
+    static native void pushFunction(long ptr, FunctionValue.Function function); /*
         lua_State* L = (lua_State*)ptr;
         jobject global_ref = env->NewGlobalRef(function);
         if (env->ExceptionOccurred()) {

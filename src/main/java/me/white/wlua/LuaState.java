@@ -6,12 +6,12 @@ import java.util.List;
 import java.util.Set;
 
 public class LuaState extends LuaValue implements AutoCloseable {
-    protected long ptr;
-    protected List<LuaState> subThreads = new ArrayList<>();
-    protected Set<Integer> aliveReferences = new HashSet<>();
-    protected LuaState mainThread;
     private boolean isClosed = false;
     private int id;
+    long ptr;
+    List<LuaState> subThreads = new ArrayList<>();
+    Set<Integer> aliveReferences = new HashSet<>();
+    LuaState mainThread;
 
     LuaState(long ptr, int state_id, LuaState mainThread) {
         if (ptr == 0) {

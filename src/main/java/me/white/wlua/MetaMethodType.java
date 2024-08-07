@@ -1,7 +1,5 @@
 package me.white.wlua;
 
-import java.lang.reflect.Method;
-
 public enum MetaMethodType {
     ADD("__add", 1, 1, false),
     SUBTRACT("__sub", 1, 1, false),
@@ -40,38 +38,5 @@ public enum MetaMethodType {
         this.returns = returns;
         this.parameters = parameters;
         this.doubleReference = doubleReference;
-    }
-
-    void validateSignature(Method method) {
-        String what = "Meta method '" + method.getName() + "' of type '" + name() + "'";
-        if (method.getParameterCount() < 1 || !method.getParameterTypes()[0].isAssignableFrom(LuaState.class)) {
-            throw new IllegalStateException(what + " should take at least 1 parameter, with first parameter of type LuaState.");
-        }
-        if (returns == 0 && method.getReturnType() != void.class) {
-            throw new IllegalStateException(what + " should return void.");
-        }
-        if (returns == 1 && !LuaValue.class.isAssignableFrom(method.getReturnType())) {
-            throw new IllegalStateException(what + " should return value of type LuaValue.");
-        }
-        if (returns == -1 && !VarArg.class.isAssignableFrom(method.getReturnType())) {
-            throw new IllegalStateException(what + " should return value of type VarArg.");
-        }
-        if (parameters == 0 && method.getParameterCount() != 1) {
-            throw new IllegalStateException(what + " should take 0 value parameters.");
-        }
-        if (parameters == -1) {
-            if (method.getParameterCount() != 2 || !method.getParameterTypes()[1].isAssignableFrom(VarArg.class)) {
-                throw new IllegalStateException(what + " should take 1 value parameter of type VarArg.");
-            }
-        } else {
-            if (parameters != method.getParameterCount() - 1) {
-                throw new IllegalStateException(what + " should take " + parameters + " value parameters of type LuaValue.");
-            }
-            for (int i = 1; i < method.getParameterCount(); ++i) {
-                if (!method.getParameterTypes()[i].isAssignableFrom(LuaValue.class)) {
-                    throw new IllegalStateException(what + " should take " + parameters + " value parameters of type LuaValue.");
-                }
-            }
-        }
     }
 }

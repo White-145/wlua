@@ -26,7 +26,7 @@ public abstract class UserData extends LuaValue {
                     throw new IllegalStateException("Name '" + name + "' is already defined.");
                 }
                 definedNames.add(name);
-                validateField(field);
+                ValidatorUtil.validateField(field);
                 fields.put(name, field);
             }
         }
@@ -41,7 +41,7 @@ public abstract class UserData extends LuaValue {
                     throw new IllegalStateException("Name '" + name + "' is already defined.");
                 }
                 definedNames.add(name);
-                validateFunction(method);
+                ValidatorUtil.validateFunction(method);
                 functions.put(name, method);
             } else if (method.isAnnotationPresent(LuaMetaMethod.class)) {
                 if (!method.canAccess(this)) {
@@ -52,7 +52,7 @@ public abstract class UserData extends LuaValue {
                 if (metaMethods.containsKey(type)) {
                     throw new IllegalStateException("Meta method of type '" + type.name() + "' is already defined.");
                 }
-                type.validateSignature(method);
+                ValidatorUtil.validateSignature(method, type);
                 metaMethods.put(type, method);
             } else if (method.isAnnotationPresent(LuaField.class)) {
                 if (!method.canAccess(this)) {
@@ -64,47 +64,8 @@ public abstract class UserData extends LuaValue {
                     throw new IllegalStateException("Name '" + name + "' is already defined.");
                 }
                 accessorNames.add(name);
-                addFieldAccessor(method, name);
+                ValidatorUtil.validateAccessor(method, name, getters, setters);
             }
-        }
-    }
-
-    private static void validateField(Field field) {
-        if (!LuaValue.class.isAssignableFrom(field.getType())) {
-            throw new IllegalStateException("Field '" + field.getName() + "' should be of type LuaValue.");
-        }
-    }
-
-    private static void validateFunction(Method method) {
-        String what = "Method '" + method.getName() + "'";
-        if (method.getParameterCount() < 1 || !method.getParameterTypes()[0].isAssignableFrom(LuaState.class)) {
-            throw new IllegalStateException(what + " should take at least 1 parameter, with first parameter of type LuaState.");
-        }
-        if (!VarArg.class.isAssignableFrom(method.getReturnType())) {
-            throw new IllegalStateException(what + " should return value of type VarArg.");
-        }
-        if (method.getParameterCount() != 2 || !method.getParameterTypes()[1].isAssignableFrom(VarArg.class)) {
-            throw new IllegalStateException(what + " should take 1 value parameter of type VarArg.");
-        }
-    }
-
-    private void addFieldAccessor(Method method, String name) {
-        String what = "'" + method.getName() + "' for field '" + name + "'";
-        if (method.getParameterCount() < 1 || !method.getParameterTypes()[0].isAssignableFrom(LuaState.class)) {
-            throw new IllegalStateException("Accessor " + what + " should take at least 1 parameter, with first parameter of type LuaState.");
-        }
-        if (method.getReturnType() == void.class) {
-            if (method.getParameterCount() != 2 || !method.getParameterTypes()[1].isAssignableFrom(LuaValue.class)) {
-                throw new IllegalStateException("Setter " + what + " should take 1 value parameter of type LuaValue.");
-            }
-            setters.put(name, method);
-        } else if (LuaValue.class.isAssignableFrom(method.getReturnType())) {
-            if (method.getParameterCount() != 1) {
-                throw new IllegalStateException("Getter " + what + " should take 0 value parameters.");
-            }
-            getters.put(name, method);
-        } else {
-            throw new IllegalStateException("Accessor " + what + " should either return value of type LuaValue or return void.");
         }
     }
 
