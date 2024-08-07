@@ -10,7 +10,6 @@ public class FunctionRefValue extends LuaValue.Ref {
         int top = LuaNatives.getTop(state.ptr);
         push(state);
         args.push(state);
-        // TODO: pcall
         int code = LuaNatives.protectedCall(state.ptr, args.size(), LuaConsts.MULT_RET);
         LuaException.checkError(code, state);
         int amount = LuaNatives.getTop(state.ptr) - top;
