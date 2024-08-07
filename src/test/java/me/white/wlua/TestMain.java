@@ -128,5 +128,6 @@ public class TestMain {
         assert state.getGlobal("value").equals(LuaValue.of(7));
         state.run("value = test.bat");
         assert state.getGlobal("value").equals(LuaValue.nil());
+        state.run("print(test)");
     }
 }

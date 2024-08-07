@@ -44,7 +44,7 @@ public class LuaState extends LuaValue implements AutoCloseable {
 
     protected void pop(int n) {
         checkIsAlive();
-        LuaNatives.lua_pop(ptr, n);
+        LuaNatives.pop(ptr, n);
     }
 
     public void openLibs() {

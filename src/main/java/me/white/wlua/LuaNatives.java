@@ -51,6 +51,7 @@ public class LuaNatives {
         }
         MetaMethodType type = MetaMethodType.values()[metaMethodType];
         LuaValue userdata = LuaValue.from(state, 1);
+        LuaNatives.lua_remove(state.ptr, 1);
         if (!(userdata instanceof UserData)) {
             return error(callerPtr, "error getting userdata");
         }
@@ -60,8 +61,7 @@ public class LuaNatives {
         Method method = ((UserData)userdata).metaMethods.get(type);
         if (type.parameters == -1) {
             int total = LuaNatives.lua_gettop(state.ptr);
-            VarArg args = VarArg.collect(state, total - 1);
-            state.pop(1);
+            VarArg args = VarArg.collect(state, total);
             Object returnValue;
             try {
                 returnValue = method.invoke(userdata, state, args);
@@ -75,7 +75,7 @@ public class LuaNatives {
             return 0;
         }
         if (type.doubleReference) {
-            state.pop(1);
+            LuaNatives.lua_remove(state.ptr, 1);
         }
         Object[] values = new Object[type.parameters + 1];
         values[0] = state;
@@ -106,11 +106,11 @@ public class LuaNatives {
             return error(callerPtr, "error getting lua state");
         }
         LuaValue userdataValue = LuaValue.from(state, -2);
+        LuaValue key = LuaValue.from(state, -1);
         if (!(userdataValue instanceof UserData)) {
             return error(callerPtr, "error getting userdata");
         }
         UserData userdata = (UserData)userdataValue;
-        LuaValue key = LuaValue.from(state, -1);
         state.pop(2);
         if (key instanceof StringValue) {
             String name = ((StringValue)key).getString();
@@ -812,10 +812,6 @@ public class LuaNatives {
         return (jint)lua_pcall((lua_State*)ptr, (int)nargs, (int)nresults, (int)msgh);
     */
 
-    static native void lua_pop(long ptr, int n); /*
-        lua_pop((lua_State*)ptr, (int)n);
-    */
-
     static native void lua_pushboolean(long ptr, int b); /*
         lua_pushboolean((lua_State*)ptr, (int)b);
     */
@@ -1147,6 +1143,13 @@ public class LuaNatives {
         lua_rawset(L, LUA_REGISTRYINDEX);
     */
 
+    static native void pop(long ptr, int n); /*
+        lua_State* L = (lua_State*)ptr;
+        if (lua_gettop(L) >= n) {
+            lua_pop(L, n);
+        }
+     */
+
     static native void pushFunction(long ptr, FunctionValue function); /*
         lua_State* L = (lua_State*)ptr;
         jobject global_ref = env->NewGlobalRef(function);
@@ -1176,10 +1179,12 @@ public class LuaNatives {
         return get_state_index(thread);
     */
 
-    static native int newMetaTable(long ptr, String name); /*
+    static native int newMetaTable(long ptr, String name, String displayName); /*
         lua_State* L = (lua_State*)ptr;
         int isNew = luaL_newmetatable(L, name);
         if (isNew) {
+            lua_pushstring(L, displayName);
+            lua_setfield(L, -2, "__name");
             lua_pushcfunction(L, &object_gc);
             lua_setfield(L, -2, "__gc");
             lua_pushcfunction(L, &index_wrapper);
@@ -1190,12 +1195,11 @@ public class LuaNatives {
         return isNew;
     */
 
-    static native void setMetaMethod(long ptr, String name, int type, int index); /*
+    static native void setMetaMethod(long ptr, String name, int type, int i); /*
         lua_State* L = (lua_State*)ptr;
-        lua_pushstring(L, name);
         lua_pushinteger(L, (int)type);
         lua_pushcclosure(L, &meta_method_wrapper, 1);
-        lua_settable(L, (int)index < 0 ? (int)index - 2 : (int)index);
+        lua_setfield(L, (int)i < 0 ? (int)i - 1 : (int)i, name);
     */
 
     static native void newUserData(long ptr, Object obj); /*
@@ -1210,12 +1214,12 @@ public class LuaNatives {
         *userdata = global_ref;
     */
 
-    static native Object getUserData(long ptr, int index); /*
+    static native Object getUserData(long ptr, int i); /*
         lua_State* L = (lua_State*)ptr;
-        if (!lua_isuserdata(L, index)) {
+        if (!lua_isuserdata(L, i)) {
             return NULL;
         }
-        jobject* userdata = (jobject*)lua_touserdata(L, index);
+        jobject* userdata = (jobject*)lua_touserdata(L, i);
         return *userdata;
     */
 }

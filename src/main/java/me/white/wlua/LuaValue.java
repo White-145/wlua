@@ -89,7 +89,7 @@ public abstract class LuaValue {
         value1.push(state);
         value2.push(state);
         boolean equals = LuaNatives.lua_compare(state.ptr, -2, -1, LuaConsts.OP_EQ) == 1;
-        LuaNatives.lua_pop(state.ptr, 2);
+        state.pop(2);
         return equals;
     }
 

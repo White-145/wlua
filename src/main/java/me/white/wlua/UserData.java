@@ -110,18 +110,18 @@ public abstract class UserData extends LuaValue {
 
     private void getMetaTable(LuaState state) {
         String metaTableName = "userdata_" + getClass().getName();
-        boolean isNew = LuaNatives.newMetaTable(state.ptr, metaTableName) == 1;
+        boolean isNew = LuaNatives.newMetaTable(state.ptr, metaTableName, getName()) == 1;
         if (isNew) {
             for (MetaMethodType type : metaMethods.keySet()) {
                 if (type.metaMethod != null) {
                     LuaNatives.setMetaMethod(state.ptr, type.metaMethod, type.ordinal(), -1);
                 }
             }
-
-            // TODO: allow specifying the __name field
-            LuaNatives.lua_pushstring(state.ptr, getClass().getSimpleName());
-            LuaNatives.lua_setfield(state.ptr, -2, "__name");
         }
+    }
+
+    public String getName() {
+        return getClass().getSimpleName().isBlank() ? "Unknown" : getClass().getSimpleName();
     }
 
     @Override

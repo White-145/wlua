@@ -49,7 +49,7 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
         ((LuaValue)key).push(state);
         LuaNatives.lua_gettable(state.ptr, -2);
         boolean contains = LuaNatives.lua_isnil(state.ptr, -1) == 0;
-        LuaNatives.lua_pop(state.ptr, 2);
+        state.pop(2);
         return contains;
     }
 
@@ -64,12 +64,12 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
         LuaValue.nil().push(state);
         while (LuaNatives.lua_next(state.ptr, -2) == 1) {
             if (LuaNatives.lua_compare(state.ptr, -4, -1, LuaConsts.OP_EQ) == 1) {
-                LuaNatives.lua_pop(state.ptr, 4);
+                state.pop(4);
                 return true;
             }
-            LuaNatives.lua_pop(state.ptr, 1);
+            state.pop(1);
         }
-        LuaNatives.lua_pop(state.ptr, 2);
+        state.pop(2);
         return false;
     }
 
@@ -83,7 +83,7 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
         ((LuaValue)key).push(state);
         LuaNatives.lua_gettable(state.ptr, -2);
         LuaValue returnValue = LuaValue.from(state, -1);
-        LuaNatives.lua_pop(state.ptr, 2);
+        state.pop(2);
         return returnValue;
     }
 
@@ -94,11 +94,11 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
         key.push(state);
         LuaNatives.lua_gettable(state.ptr, -2);
         LuaValue returnValue = LuaValue.from(state, -1);
-        LuaNatives.lua_pop(state.ptr, 1);
+        state.pop(1);
         key.push(state);
         value.push(state);
         LuaNatives.lua_settable(state.ptr, -3);
-        LuaNatives.lua_pop(state.ptr, 1);
+        state.pop(1);
         return returnValue;
     }
 
@@ -120,7 +120,7 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
             entry.getValue().push(state);
             LuaNatives.lua_settable(state.ptr, -3);
         }
-        LuaNatives.lua_pop(state.ptr, 1);
+        state.pop(1);
     }
 
     @Override
@@ -130,13 +130,13 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
         LuaValue key = LuaValue.nil();
         key.push(state);
         while (LuaNatives.lua_next(state.ptr, -2) == 1) {
-            LuaNatives.lua_pop(state.ptr, 1);
+            state.pop(1);
             key = LuaValue.from(state, -1);
             LuaValue.nil().push(state);
             LuaNatives.lua_settable(state.ptr, -3);
             key.push(state);
         }
-        LuaNatives.lua_pop(state.ptr, 1);
+        state.pop(1);
     }
 
     @Override
@@ -146,10 +146,10 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
         push(state);
         LuaValue.nil().push(state);
         while (LuaNatives.lua_next(state.ptr, -2) == 1) {
-            LuaNatives.lua_pop(state.ptr, 1);
+            state.pop(1);
             keys.add(LuaValue.from(state, -1));
         }
-        LuaNatives.lua_pop(state.ptr, 1);
+        state.pop(1);
         return keys;
     }
 
@@ -161,9 +161,9 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
         LuaValue.nil().push(state);
         while (LuaNatives.lua_next(state.ptr, -2) == 1) {
             values.add(LuaValue.from(state, -1));
-            LuaNatives.lua_pop(state.ptr, 1);
+            state.pop(1);
         }
-        LuaNatives.lua_pop(state.ptr, 1);
+        state.pop(1);
         return values;
     }
 
@@ -196,7 +196,7 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
             push(state);
             key.push(state);
             boolean hasNext = LuaNatives.lua_next(state.ptr, -2) == 1;
-            LuaNatives.lua_pop(state.ptr, hasNext ? 3 : 1);
+            state.pop(hasNext ? 3 : 1);
             return hasNext;
         }
 
@@ -206,12 +206,12 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
             push(state);
             key.push(state);
             if (LuaNatives.lua_next(state.ptr, -2) == 0) {
-                LuaNatives.lua_pop(state.ptr, 1);
+                state.pop(1);
                 throw new NoSuchElementException();
             }
             key = LuaValue.from(state, -2);
             LuaValue value = LuaValue.from(state, -1);
-            LuaNatives.lua_pop(state.ptr, 3);
+            state.pop(3);
             return new AbstractMap.SimpleEntry<>(key, value);
         }
 
@@ -225,7 +225,7 @@ public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValu
             key.push(state);
             LuaNatives.lua_pushnil(state.ptr);
             LuaNatives.lua_settable(state.ptr, -3);
-            LuaNatives.lua_pop(state.ptr, 1);
+            state.pop(1);
         }
     }
 }
