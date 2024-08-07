@@ -7,7 +7,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
-public class LuaNatives {
+class LuaNatives {
     // @off
     static {
         new SharedLibraryLoader().load("wlua");

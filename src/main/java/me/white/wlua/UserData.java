@@ -5,11 +5,11 @@ import java.util.*;
 
 public abstract class UserData extends LuaValue {
     private boolean hasCollected = false;
-    Map<String, Field> fields = new HashMap<>();
-    Map<String, Method> functions = new HashMap<>();
-    EnumMap<MetaMethodType, Method> metaMethods = new EnumMap<>(MetaMethodType.class);
-    Map<String, Method> getters = new HashMap<>();
-    Map<String, Method> setters = new HashMap<>();
+    final Map<String, Field> fields = new HashMap<>();
+    final Map<String, Method> functions = new HashMap<>();
+    final EnumMap<MetaMethodType, Method> metaMethods = new EnumMap<>(MetaMethodType.class);
+    final Map<String, Method> getters = new HashMap<>();
+    final Map<String, Method> setters = new HashMap<>();
 
     private void collectMembers() {
         Set<String> definedNames = new HashSet<>();

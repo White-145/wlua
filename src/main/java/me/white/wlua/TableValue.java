@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class TableValue extends LuaValue implements Map<LuaValue, LuaValue> {
-    private Map<LuaValue, LuaValue> map;
+    private final Map<LuaValue, LuaValue> map;
 
     public TableValue() {
         this.map = new HashMap<>();

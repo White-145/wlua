@@ -3,7 +3,7 @@ package me.white.wlua;
 import java.util.Objects;
 
 public class StringValue extends LuaValue {
-    private String value;
+    private final String value;
 
     public StringValue(String value) {
         Objects.requireNonNull(value);

@@ -102,10 +102,10 @@ public abstract class LuaValue {
     public void unref() { }
 
     public static class Ref extends LuaValue {
-        private Cleaner.Cleanable cleanable;
-        private CleanableRef cleanableRef;
-        protected LuaState state;
-        protected int reference;
+        private final Cleaner.Cleanable cleanable;
+        private final CleanableRef cleanableRef;
+        protected final LuaState state;
+        protected final int reference;
 
         protected Ref(LuaState state, int index) {
             state.checkIsAlive();

@@ -1,7 +1,7 @@
 package me.white.wlua;
 
 public class IntegerValue extends NumberValue {
-    private long value;
+    private final long value;
 
     public IntegerValue(double value) {
         super(value);

@@ -1,7 +1,7 @@
 package me.white.wlua;
 
 public class NumberValue extends LuaValue {
-    private double value;
+    private final double value;
 
     public NumberValue(double value) {
         this.value = value;
