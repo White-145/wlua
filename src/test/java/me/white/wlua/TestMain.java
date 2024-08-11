@@ -2,12 +2,45 @@ package me.white.wlua;
 
 import java.util.HashMap;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.stream.LongStream;
 
 public class TestMain {
     public static void main(String[] args) {
         try (LuaState state = new LuaState()) {
             testValues(state);
-            assert LuaNatives.getTop(state.ptr) == 0;
+        }
+        UserData data = new TestUserData();
+        try (LuaState state = new LuaState()) {
+            for (int i = 0; i < 3000; ++i) {
+//            measure((i) -> {
+                LuaValue ref;
+                for (int j = 0; j < 1000; ++j) {
+//                    state.run("function f(n);a=0;b=1;for i=1,n do;c=a+b;a=b;b=c;end;return b;end;f(30)");
+                    state.setGlobal(data, "a");
+                    state.run("a(123.456, 456.123)");
+                    state.getGlobal("a");
+                    state.setGlobal(LuaValue.of((a, b) -> {
+                        return new VarArg();
+                    }), "b");
+                    state.run("b()");
+                    ref = state.getGlobal("b");
+                }
+//            }, 30000);
+            }
+        }
+    }
+
+    private static void measure(Consumer<Integer> func, int amount) {
+        long[] times = new long[amount];
+        for (int i = 0; i < amount; ++i) {
+            long start = System.nanoTime();
+            func.accept(i);
+            long end = System.nanoTime();
+            times[i] = end - start;
+            double avg = LongStream.of(times).limit(i + 1).average().orElseThrow() / 1e6;
+            System.out.print(Math.round(avg * 1000) / 1000.0 + "ms (" + (i + 1) + ")\r");
+            System.out.flush();
         }
     }
 

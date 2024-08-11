@@ -67,6 +67,7 @@ public abstract class UserData extends LuaValue {
                 ValidatorUtil.validateAccessor(method, name, getters, setters);
             }
         }
+        hasCollected = true;
     }
 
     private void getMetaTable(LuaState state) {

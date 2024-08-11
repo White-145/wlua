@@ -8,6 +8,7 @@ import java.util.Set;
 public class LuaState extends LuaValue implements AutoCloseable {
     private boolean isClosed = false;
     private int id;
+    final Object LOCK = new Object();
     long ptr;
     List<LuaState> subThreads = new ArrayList<>();
     Set<Integer> aliveReferences = new HashSet<>();
@@ -28,18 +29,24 @@ public class LuaState extends LuaValue implements AutoCloseable {
     }
 
     void addSubThread(LuaState thread) {
-        checkIsAlive();
-        subThreads.add(thread);
+        synchronized (LOCK) {
+            checkIsAlive();
+            subThreads.add(thread);
+        }
     }
 
     void pop(int n) {
-        checkIsAlive();
-        LuaNatives.pop(ptr, n);
+        synchronized (LOCK) {
+            checkIsAlive();
+            LuaNatives.pop(ptr, n);
+        }
     }
 
     void pushValue(LuaValue value) {
-        checkIsAlive();
-        value.push(this);
+        synchronized (LOCK) {
+            checkIsAlive();
+            value.push(this);
+        }
     }
 
     public void checkIsAlive() {
@@ -53,27 +60,36 @@ public class LuaState extends LuaValue implements AutoCloseable {
     }
 
     public void openLibs() {
-        checkIsAlive();
-        LuaNatives.openLibs(ptr);
+        synchronized (LOCK) {
+            checkIsAlive();
+            LuaNatives.openLibs(ptr);
+        }
     }
 
     public void setGlobal(LuaValue value, String name) {
-        checkIsAlive();
-        value.push(this);
-        LuaNatives.setGlobal(ptr, name);
+        synchronized (LOCK) {
+            checkIsAlive();
+            value.push(this);
+            LuaNatives.setGlobal(ptr, name);
+        }
     }
 
     public LuaValue getGlobal(String name) {
-        checkIsAlive();
-        LuaNatives.getGlobal(ptr, name);
-        LuaValue value = LuaValue.from(this, -1);
-        pop(1);
-        return value;
+        synchronized (LOCK) {
+            checkIsAlive();
+            LuaNatives.getGlobal(ptr, name);
+            LuaValue value = LuaValue.from(this, -1);
+            LuaNatives.pop(ptr, 1);
+            return value;
+        }
     }
 
     public void run(String chunk) {
-        checkIsAlive();
-        LuaValue.chunk(this, chunk).run(this, new VarArg());
+        synchronized (LOCK) {
+            checkIsAlive();
+            FunctionRefValue ref = LuaValue.chunk(this, chunk);
+            ref.run(this, new VarArg());
+        }
     }
 
     public boolean isClosed() {
@@ -82,30 +98,33 @@ public class LuaState extends LuaValue implements AutoCloseable {
 
     @Override
     void push(LuaState state) {
-        state.checkIsAlive();
-        if (state.mainThread.isSubThread(this)) {
-            throw new IllegalStateException("Could not push thread to the separate lua state.");
+        synchronized (LOCK) {
+            state.checkIsAlive();
+            if (state.mainThread.isSubThread(this)) {
+                throw new IllegalStateException("Could not push thread to the separate lua state.");
+            }
+            LuaNatives.pushThread(ptr);
         }
-        LuaNatives.pushThread(ptr);
     }
 
     @Override
     public void close() {
-        if (isClosed()) {
-            return;
-        }
-        if (mainThread == this) {
-            for (LuaState thread : subThreads) {
-                LuaInstances.remove(thread.id);
+        synchronized (LOCK) {
+            if (isClosed()) {
+                return;
             }
-            subThreads.clear();
             LuaInstances.remove(id);
-            LuaNatives.closeState(ptr);
-        } else {
-            mainThread.subThreads.remove(this);
-            LuaInstances.remove(id);
-            LuaNatives.removeState(ptr);
+            if (mainThread == this) {
+                for (LuaState thread : subThreads) {
+                    LuaInstances.remove(thread.id);
+                }
+                subThreads.clear();
+                LuaNatives.closeState(ptr);
+            } else {
+                mainThread.subThreads.remove(this);
+                LuaNatives.removeState(ptr);
+            }
+            isClosed = true;
         }
-        isClosed = true;
     }
 }

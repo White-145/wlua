@@ -23,15 +23,14 @@ public class TestUserData extends UserData {
     @LuaMetaMethod(MetaMethodType.CALL)
     public VarArg call(LuaState state, Object args1) {
         VarArg args = (VarArg)args1;
-        if (args.size() != 2) {
-            return new VarArg();
+        double sum = 0;
+        if (args.get(0) instanceof NumberValue) {
+            sum += ((NumberValue)args.get(0)).getNumber();
         }
-        LuaValue first = args.get(0);
-        LuaValue second = args.get(1);
-        if (!(first instanceof NumberValue) || !(second instanceof NumberValue)) {
-            return new VarArg();
+        if (args.get(1) instanceof NumberValue) {
+            sum += ((NumberValue)args.get(1)).getNumber();
         }
-        return new VarArg(new NumberValue(((NumberValue)first).getNumber() + ((NumberValue)second).getNumber()));
+        return new VarArg(LuaValue.of(sum));
     }
 
     @LuaMetaMethod(MetaMethodType.LENGTH)

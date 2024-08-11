@@ -128,10 +128,6 @@ public abstract class LuaValue {
 
         @Override
         public void unref() {
-            if (!state.isClosed() && state.aliveReferences.contains(reference)) {
-                LuaNatives.deleteRef(state.ptr, reference);
-                state.aliveReferences.remove(reference);
-            }
             cleanable.clean();
         }
 
@@ -172,9 +168,11 @@ public abstract class LuaValue {
 
             @Override
             public void run() {
-                if (!state.isClosed() && state.aliveReferences.contains(reference)) {
-                    LuaNatives.deleteRef(state.ptr, reference);
-                    state.aliveReferences.remove(reference);
+                synchronized (state.LOCK) {
+                    if (!state.isClosed() && state.aliveReferences.contains(reference)) {
+                        LuaNatives.deleteRef(state.ptr, reference);
+                        state.aliveReferences.remove(reference);
+                    }
                 }
             }
         }
