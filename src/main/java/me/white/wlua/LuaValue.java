@@ -99,8 +99,6 @@ public abstract class LuaValue {
 
     abstract void push(LuaState state);
 
-    public void unref() { }
-
     public static class Ref extends LuaValue {
         private final Cleaner.Cleanable cleanable;
         private final CleanableRef cleanableRef;
@@ -126,7 +124,6 @@ public abstract class LuaValue {
             }
         }
 
-        @Override
         public void unref() {
             cleanable.clean();
         }

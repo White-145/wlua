@@ -9,25 +9,7 @@ public class TestMain {
     public static void main(String[] args) {
         try (LuaState state = new LuaState()) {
             testValues(state);
-        }
-        UserData data = new TestUserData();
-        try (LuaState state = new LuaState()) {
-            for (int i = 0; i < 3000; ++i) {
-//            measure((i) -> {
-                LuaValue ref;
-                for (int j = 0; j < 1000; ++j) {
-//                    state.run("function f(n);a=0;b=1;for i=1,n do;c=a+b;a=b;b=c;end;return b;end;f(30)");
-                    state.setGlobal(data, "a");
-                    state.run("a(123.456, 456.123)");
-                    state.getGlobal("a");
-                    state.setGlobal(LuaValue.of((a, b) -> {
-                        return new VarArg();
-                    }), "b");
-                    state.run("b()");
-                    ref = state.getGlobal("b");
-                }
-//            }, 30000);
-            }
+            testConcurrencyRef(state);
         }
     }
 
@@ -135,7 +117,6 @@ public class TestMain {
         assert ret.size() == 2;
         retValue = ret.get(0);
         assert retValue instanceof StringValue && ((StringValue)retValue).getString().equals("string");
-        value.unref();
     }
 
     private static void testUserData(LuaState state) {
@@ -163,5 +144,19 @@ public class TestMain {
         assert state.getGlobal("value").equals(LuaValue.nil());
         state.run("value = tostring(test)");
         assert ((StringValue)state.getGlobal("value")).getString().startsWith("Qwerty Data: ");
+    }
+
+    private static void testConcurrencyRef(LuaState state) {
+        UserData data = new TestUserData();
+        for (int j = 0; j < 1000; ++j) {
+            state.setGlobal(data, "a");
+            state.run("a(123.456, 456.123)");
+            state.getGlobal("a");
+            state.setGlobal(LuaValue.of((a, b) -> {
+                return new VarArg();
+            }), "b");
+            state.run("b()");
+            state.getGlobal("b");
+        }
     }
 }
