@@ -11,15 +11,10 @@ buildscript {
 plugins {
     id 'java'
     id 'java-library'
-    id 'application'
 }
 
 group = project.maven_group
 version = project.version
-
-application {
-    mainClass = "me.white.wlua.Main"
-}
 
 repositories {
     mavenCentral()
@@ -49,10 +44,25 @@ jnigen {
     add(Windows, x64)
 }
 
-sourceSets {
-    main {
-        runtimeClasspath += jnigenJarNativesDesktop.outputs.getFiles()
+configurations {
+    desktopNatives {
+        canBeConsumed = true
+        canBeResolved = false
     }
+
+    instrumentedJars {
+        canBeConsumed = true
+        canBeResolved = false
+        extendsFrom api, implementation, runtimeOnly
+    }
+}
+
+artifacts {
+    instrumentedJars(jar)
+    desktopNatives(jnigenJarNativesDesktop)
+}
+
+sourceSets {
     test {
         runtimeClasspath += jnigenJarNativesDesktop.outputs.getFiles()
     }
