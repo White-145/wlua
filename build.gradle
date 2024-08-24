@@ -63,7 +63,12 @@ artifacts {
 }
 
 sourceSets {
+    main {
+        runtimeClasspath += jnigenJarNativesDesktop.outputs.getFiles()
+    }
     test {
         runtimeClasspath += jnigenJarNativesDesktop.outputs.getFiles()
     }
 }
+
+tasks.jnigen.dependsOn(tasks.build)
