@@ -44,28 +44,12 @@ jnigen {
     add(Windows, x64)
 }
 
-configurations {
-    desktopNatives {
-        canBeConsumed = true
-        canBeResolved = false
-    }
-
-    instrumentedJars {
-        canBeConsumed = true
-        canBeResolved = false
-        extendsFrom api, implementation, runtimeOnly
-    }
-}
-
-artifacts {
-    instrumentedJars(jar)
-    desktopNatives(jnigenJarNativesDesktop)
+jar {
+    from(configurations.runtimeClasspath.collect { zipTree(it) })
+    from(jnigenJarNativesDesktop.outputs.getFiles())
 }
 
 sourceSets {
-    main {
-        runtimeClasspath += jnigenJarNativesDesktop.outputs.getFiles()
-    }
     test {
         runtimeClasspath += jnigenJarNativesDesktop.outputs.getFiles()
     }
