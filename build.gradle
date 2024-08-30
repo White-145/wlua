@@ -44,6 +44,12 @@ jnigen {
     add(Windows, x64)
 }
 
-jar {
-    from fileTree("libs").files
+configurations {
+    natives
+}
+
+artifacts {
+    for (File file : jnigenJarNativesDesktop.outputs.files) {
+        natives(file)
+    }
 }
