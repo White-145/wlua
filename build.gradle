@@ -45,14 +45,5 @@ jnigen {
 }
 
 jar {
-    from(configurations.runtimeClasspath.collect { zipTree(it) })
-    from(jnigenJarNativesDesktop.outputs.getFiles())
+    from fileTree("libs").files
 }
-
-sourceSets {
-    test {
-        runtimeClasspath += jnigenJarNativesDesktop.outputs.getFiles()
-    }
-}
-
-tasks.jnigen.dependsOn(tasks.build)
