@@ -24,7 +24,7 @@ public class ValidatorUtil {
         }
     }
 
-    static void validateSignature(Method method, MetaMethodType type) {
+    static void validateMetaMethod(Method method, MetaMethodType type) {
         String what = "Meta method '" + method.getName() + "' of type '" + type.name() + "'";
         if (method.getParameterCount() < 1 || !method.getParameterTypes()[0].isAssignableFrom(LuaState.class)) {
             throw new IllegalStateException(what + " should take at least 1 parameter, with first parameter of type LuaState.");

@@ -52,7 +52,7 @@ public abstract class UserData extends LuaValue {
                 if (metaMethods.containsKey(type)) {
                     throw new IllegalStateException("Meta method of type '" + type.name() + "' is already defined.");
                 }
-                ValidatorUtil.validateSignature(method, type);
+                ValidatorUtil.validateMetaMethod(method, type);
                 metaMethods.put(type, method);
             } else if (method.isAnnotationPresent(LuaField.class)) {
                 if (!method.canAccess(this)) {

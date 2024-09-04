@@ -88,7 +88,7 @@ public class TableValue extends LuaValue implements Map<LuaValue, LuaValue> {
 
     @Override
     void push(LuaState state) {
-        LuaNatives.newTable(state.ptr);
+        LuaNatives.newTable(state.ptr, size());
         for (Entry<LuaValue, LuaValue> entry : entrySet()) {
             state.pushValue(entry.getKey());
             state.pushValue(entry.getValue());

@@ -1,9 +1,6 @@
 package me.white.wlua;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class LuaState extends LuaValue implements AutoCloseable {
     private boolean isClosed = false;
@@ -63,6 +60,13 @@ public class LuaState extends LuaValue implements AutoCloseable {
         synchronized (LOCK) {
             checkIsAlive();
             LuaNatives.openLibs(ptr);
+        }
+    }
+
+    public void openLib(Library library) {
+        synchronized (LOCK) {
+            checkIsAlive();
+            library.open(this);
         }
     }
 
