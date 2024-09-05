@@ -70,7 +70,7 @@ public class LuaState extends LuaValue implements AutoCloseable {
         }
     }
 
-    public void setGlobal(LuaValue value, String name) {
+    public void setGlobal(String name, LuaValue value) {
         synchronized (LOCK) {
             checkIsAlive();
             value.push(this);
@@ -88,12 +88,61 @@ public class LuaState extends LuaValue implements AutoCloseable {
         }
     }
 
-    public void run(String chunk) {
+    public FunctionRefValue load(String chunk) {
         synchronized (LOCK) {
             checkIsAlive();
-            FunctionRefValue ref = LuaValue.chunk(this, chunk);
-            ref.run(this, new VarArg());
+            return LuaValue.chunk(this, chunk);
         }
+    }
+
+    public VarArg run(String code) {
+        synchronized (LOCK) {
+            return LuaValue.chunk(this, code).run(this, new VarArg());
+        }
+    }
+
+    public VarArg run(FunctionRefValue chunk, VarArg args) {
+        synchronized (LOCK) {
+            return chunk.run(this, args);
+        }
+    }
+
+    public VarArg resume(FunctionRefValue chunk, VarArg args) {
+        synchronized (LOCK) {
+            checkIsAlive();
+            int top = LuaNatives.getTop(ptr);
+            if (chunk != null) {
+                chunk.push(this);
+            } else if (!isSuspended()) {
+                throw new IllegalStateException("Cannot resume not suspended state.");
+            }
+            args.push(this);
+            int code = LuaNatives.resume(ptr, args.size());
+            LuaException.checkError(code, this);
+            int amount = LuaNatives.getTop(ptr) - top;
+            return VarArg.collect(this, amount);
+        }
+    }
+
+    public VarArg resume(VarArg args) {
+        return resume(null, args);
+    }
+
+    public void yield() {
+        if (!isYieldable()) {
+            throw new IllegalStateException("Cannot yield non-yieldable state");
+        }
+        synchronized (LOCK) {
+            LuaNatives.yield(ptr);
+        }
+    }
+
+    public boolean isYieldable() {
+        return LuaNatives.isYieldable(ptr);
+    }
+
+    public boolean isSuspended() {
+        return LuaNatives.isSuspended(ptr);
     }
 
     public boolean isClosed() {

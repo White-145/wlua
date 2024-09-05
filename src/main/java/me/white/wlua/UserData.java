@@ -76,7 +76,7 @@ public abstract class UserData extends LuaValue {
         if (isNew) {
             for (MetaMethodType type : metaMethods.keySet()) {
                 if (type.metaMethod != null) {
-                    LuaNatives.setMetaMethod(state.ptr, type.metaMethod, type.ordinal());
+                    LuaNatives.setMetaMethod(state.ptr, type.metaMethod, type.ordinal(), type.returns);
                 }
             }
         }

@@ -32,8 +32,11 @@ class LuaNatives {
         }
         VarArg args = VarArg.collect(state, params);
         VarArg results = ((FunctionValue.Function)function).run(state, args);
-        results.push(state);
-        return results.size();
+        if (results != null) {
+            results.push(state);
+            return results.size();
+        }
+        return 0;
     }
 
     private static int invokeMethod(long callerPtr, int stateIndex, Object method, int params) {
@@ -272,6 +275,8 @@ class LuaNatives {
     #define JAVA_OBJECT_GC "object_gc"
     #define JAVA_BOOLEAN(bool) bool ? JNI_TRUE : JNI_FALSE;
 
+    #define YIELD_FIELD "yield"
+
     JavaVM* java_vm = NULL;
     jint env_version;
     jclass natives_class;
@@ -357,6 +362,18 @@ class LuaNatives {
         return lua_error(L);
     }
 
+    void check_yield(lua_State* L, int results, int required) {
+        lua_getfield(L, LUA_REGISTRYINDEX, YIELD_FIELD);
+        int should_yield = lua_isboolean(L, -1) && lua_toboolean(L, -1);
+        lua_pop(L, 1);
+        if (!should_yield) {
+            return;
+        }
+        lua_pushinteger(L, required);
+        lua_setfield(L, LUA_REGISTRYINDEX, YIELD_FIELD);
+        lua_yield(L, results);
+    }
+
     int object_gc(lua_State* L) {
         jobject* global_ref = (jobject*)luaL_checkudata(L, 1, JAVA_OBJECT_GC);
         JNIEnv* env = get_env(L);
@@ -368,23 +385,27 @@ class LuaNatives {
         jobject* function = (jobject*)lua_touserdata(L, lua_upvalueindex(1));
         int state_index = get_state_index(L);
         JNIEnv* env = get_env(L);
-        int value = (int)env->CallStaticIntMethod(natives_class, invoke_method, (jlong)L, (jint)state_index, *function, (jint)lua_gettop(L));
-        return return_or_error(env, L, value);
+        int returns = (int)env->CallStaticIntMethod(natives_class, invoke_method, (jlong)L, (jint)state_index, *function, (jint)lua_gettop(L));
+        check_yield(L, returns, -1);
+        return return_or_error(env, L, returns);
     }
 
     int method_wrapper(lua_State* L) {
         jobject* method = (jobject*)lua_touserdata(L, lua_upvalueindex(1));
         int state_index = get_state_index(L);
         JNIEnv* env = get_env(L);
-        int value = (int)env->CallStaticIntMethod(natives_class, invoke_method_method, (jlong)L, (jint)state_index, *method, (jint)lua_gettop(L));
-        return return_or_error(env, L, value);
+        int returns = (int)env->CallStaticIntMethod(natives_class, invoke_method_method, (jlong)L, (jint)state_index, *method, (jint)lua_gettop(L));
+        check_yield(L, returns, -1);
+        return return_or_error(env, L, returns);
     }
 
     int meta_method_wrapper(lua_State* L) {
         int type = lua_tointeger(L, lua_upvalueindex(1));
+        int results = lua_tointeger(L, lua_upvalueindex(2));
         int state_index = get_state_index(L);
         JNIEnv* env = get_env(L);
         int returns = env->CallStaticIntMethod(natives_class, invoke_meta_method, (jlong)L, (jint)state_index, (jint)type);
+        check_yield(L, returns, results);
         return return_or_error(env, L, returns);
     }
 
@@ -392,6 +413,7 @@ class LuaNatives {
         int state_index = get_state_index(L);
         JNIEnv* env = get_env(L);
         int returns = env->CallStaticIntMethod(natives_class, index_method, (jlong)L, (jint)state_index);
+        check_yield(L, returns, 1);
         return return_or_error(env, L, returns);
     }
 
@@ -399,6 +421,7 @@ class LuaNatives {
         int state_index = get_state_index(L);
         JNIEnv* env = get_env(L);
         int returns = env->CallStaticIntMethod(natives_class, new_index_method, (jlong)L, (jint)state_index);
+        check_yield(L, returns, 0);
         return return_or_error(env, L, returns);
     }
     */
@@ -879,10 +902,11 @@ class LuaNatives {
         return JAVA_BOOLEAN(isNew);
     */
 
-    static native void setMetaMethod(long ptr, String name, int type); /*
+    static native void setMetaMethod(long ptr, String name, int type, int returns); /*
         lua_State* L = (lua_State*)ptr;
         lua_pushinteger(L, (int)type);
-        lua_pushcclosure(L, &meta_method_wrapper, 1);
+        lua_pushinteger(L, (int)returns);
+        lua_pushcclosure(L, &meta_method_wrapper, 2);
         lua_setfield(L, -2, name);
     */
 
@@ -1032,5 +1056,42 @@ class LuaNatives {
         *userdata = global_ref;
         luaL_setmetatable(L, JAVA_OBJECT_GC);
         lua_pushcclosure(L, &method_wrapper, 1);
+    */
+
+    static native int resume(long ptr, int args); /*
+        lua_State* L = (lua_State*)ptr;
+        lua_getfield(L, LUA_REGISTRYINDEX, YIELD_FIELD);
+        if (lua_isinteger(L, -1)) {
+            int required = lua_tointeger(L, -1);
+            lua_pop(L, 1);
+            lua_pushnil(L);
+            lua_setfield(L, LUA_REGISTRYINDEX, YIELD_FIELD);
+            if (required != -1 && args != required) {
+                lua_pushstring(L, "wrong amount of arguments to resume a coroutine");
+                lua_error(L);
+                return -1;
+            }
+        } else {
+            lua_pop(L, 1);
+        }
+        int results;
+        int code = lua_resume(L, (lua_State*)NULL, (int)args, &results);
+        return code;
+    */
+
+    static native boolean isYieldable(long ptr); /*
+        lua_State* L = (lua_State*)ptr;
+        return JAVA_BOOLEAN(lua_isyieldable(L));
+    */
+
+    static native boolean isSuspended(long ptr); /*
+        lua_State* L = (lua_State*)ptr;
+        return JAVA_BOOLEAN(lua_status(L) == LUA_YIELD);
+    */
+
+    static native void yield(long ptr); /*
+        lua_State* L = (lua_State*)ptr;
+        lua_pushboolean(L, 1);
+        lua_setfield(L, LUA_REGISTRYINDEX, YIELD_FIELD);
     */
 }
