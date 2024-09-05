@@ -107,7 +107,7 @@ public class LuaState extends LuaValue implements AutoCloseable {
         }
     }
 
-    public VarArg resume(FunctionRefValue chunk, VarArg args) {
+    private VarArg resume(FunctionRefValue chunk, VarArg args) {
         synchronized (LOCK) {
             checkIsAlive();
             int top = LuaNatives.getTop(ptr);
@@ -122,6 +122,10 @@ public class LuaState extends LuaValue implements AutoCloseable {
             int amount = LuaNatives.getTop(ptr) - top;
             return VarArg.collect(this, amount);
         }
+    }
+
+    public VarArg resume(FunctionRefValue chunk) {
+        return resume(chunk, new VarArg());
     }
 
     public VarArg resume(VarArg args) {
