@@ -1,9 +1,14 @@
-package me.white.wlua;
+package me.white.wlua.test;
+
+import me.white.wlua.*;
 
 public class TestLibrary extends Library {
     public static final Library LIBRARY = new TestLibrary();
 
     private TestLibrary() { }
+
+    @LuaField("pi")
+    public static LuaValue PI = LuaValue.of(Math.PI);
 
     @LuaFunction("count")
     public static VarArg amount(LuaState state, VarArg args) {

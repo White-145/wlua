@@ -63,11 +63,19 @@ public class LuaState extends LuaValue implements AutoCloseable {
         }
     }
 
-    public void openLib(Library library) {
+    public void openLib(Library library, String name) {
         synchronized (LOCK) {
             checkIsAlive();
-            library.open(this);
+            if (name == null) {
+                library.openGlobal(this);
+            } else {
+                library.open(this, name);
+            }
         }
+    }
+
+    public void openLib(Library library) {
+        openLib(library, null);
     }
 
     public void setGlobal(String name, LuaValue value) {

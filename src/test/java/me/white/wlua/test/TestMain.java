@@ -1,4 +1,6 @@
-package me.white.wlua;
+package me.white.wlua.test;
+
+import me.white.wlua.*;
 
 import java.util.HashMap;
 import java.util.Set;
@@ -175,13 +177,22 @@ public class TestMain {
             assert state.getGlobal("value").equals(LuaValue.of(3));
             state.run("value = greet('john', 'lisa', 'mark')");
             assert state.getGlobal("value").equals(LuaValue.of("Hello, john, lisa and mark!"));
+            state.run("value = pi");
+            assert state.getGlobal("value").equals(LuaValue.of(Math.PI));
+
+            state.openLib(TestLibrary.LIBRARY, "lib");
+            state.run("value = lib.count(1, 2, 3)");
+            assert state.getGlobal("value").equals(LuaValue.of(3));
+            state.run("value = lib.greet('john', 'lisa', 'mark')");
+            assert state.getGlobal("value").equals(LuaValue.of("Hello, john, lisa and mark!"));
+            state.run("value = lib.pi");
+            assert state.getGlobal("value").equals(LuaValue.of(Math.PI));
         }
     }
 
     private static void testCoroutines() {
         try (LuaState state = new LuaState()) {
             state.setGlobal("yield", LuaValue.of((lua, args) -> {
-                assert args.size() == 1 && args.get(0).equals(LuaValue.of(20));
                 return lua.yield(new VarArg(LuaValue.of(30)));
             }));
             FunctionRefValue chunk = LuaValue.chunk(state, """

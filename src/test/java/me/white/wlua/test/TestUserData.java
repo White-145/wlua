@@ -1,4 +1,6 @@
-package me.white.wlua;
+package me.white.wlua.test;
+
+import me.white.wlua.*;
 
 public class TestUserData extends UserData {
     private LuaValue qux = LuaValue.nil();

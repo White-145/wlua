@@ -1,5 +1,6 @@
 package me.white.wlua;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
@@ -7,12 +8,37 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public class Library {
+public abstract class Library {
+    private final Map<String, LuaValue> fields = new HashMap<>();
     private final Map<String, Method> functions = new HashMap<>();
     private boolean hasCollected = false;
 
     private void collectMembers() {
         Set<String> definedNames = new HashSet<>();
+        for (Field field : getClass().getFields()) {
+            if (field.isAnnotationPresent(LuaField.class)) {
+                if (!Modifier.isStatic(field.getModifiers())) {
+                    throw new IllegalStateException("Field '" + field.getName() + "' is not static.");
+                }
+                if (!field.canAccess(null)) {
+                    throw new IllegalStateException("Method '" + field.getName() + "' is not accessible.");
+                }
+                LuaField annotation = field.getAnnotation(LuaField.class);
+                String name = annotation.value();
+                if (definedNames.contains(name)) {
+                    throw new IllegalStateException("Name '" + name + "' is already defined.");
+                }
+                definedNames.add(name);
+                ValidatorUtil.validateField(field);
+                Object value;
+                try {
+                    value = field.get(null);
+                } catch (IllegalAccessException e) {
+                    throw new IllegalStateException("Field '" + field.getName() + "' is not accessible");
+                }
+                fields.put(name, (LuaValue)value);
+            }
+        }
         for (Method method : getClass().getMethods()) {
             if (method.isAnnotationPresent(LuaFunction.class)) {
                 if (!Modifier.isStatic(method.getModifiers())) {
@@ -34,15 +60,33 @@ public class Library {
         hasCollected = true;
     }
 
-    void open(LuaState state) {
+    void openGlobal(LuaState state) {
         if (!hasCollected) {
             collectMembers();
         }
-        for (Map.Entry<String, Method> entry : functions.entrySet()) {
-            String name = entry.getKey();
-            Method method = entry.getValue();
-            LuaNatives.pushMethod(state.ptr, method);
-            LuaNatives.setGlobal(state.ptr, name);
+        for (Map.Entry<String, LuaValue> entry : fields.entrySet()) {
+            entry.getValue().push(state);
+            LuaNatives.setGlobal(state.ptr, entry.getKey());
         }
+        for (Map.Entry<String, Method> entry : functions.entrySet()) {
+            LuaNatives.pushMethod(state.ptr, entry.getValue());
+            LuaNatives.setGlobal(state.ptr, entry.getKey());
+        }
+    }
+
+    void open(LuaState state, String name) {
+        if (!hasCollected) {
+            collectMembers();
+        }
+        LuaNatives.newTable(state.ptr, fields.size() + functions.size());
+        for (Map.Entry<String, LuaValue> entry : fields.entrySet()) {
+            entry.getValue().push(state);
+            LuaNatives.tableSetField(state.ptr, entry.getKey());
+        }
+        for (Map.Entry<String, Method> entry : functions.entrySet()) {
+            LuaNatives.pushMethod(state.ptr, entry.getValue());
+            LuaNatives.tableSetField(state.ptr, entry.getKey());
+        }
+        LuaNatives.setGlobal(state.ptr, name);
     }
 }
