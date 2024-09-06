@@ -149,8 +149,8 @@ class LuaNatives {
         state.pop(2);
         if (key instanceof StringValue) {
             String name = ((StringValue)key).getString();
-            if (userdata.fields.containsKey(name)) {
-                Field field = userdata.fields.get(name);
+            if (userdata.readFields.containsKey(name)) {
+                Field field = userdata.readFields.get(name);
                 Object result;
                 try {
                     result = field.get(userdata);
@@ -230,8 +230,8 @@ class LuaNatives {
         state.pop(3);
         if (key instanceof StringValue) {
             String name = ((StringValue)key).getString();
-            if (userdata.fields.containsKey(name)) {
-                Field field = userdata.fields.get(name);
+            if (userdata.writeFields.containsKey(name)) {
+                Field field = userdata.writeFields.get(name);
                 if (Modifier.isFinal(field.getModifiers())) {
                     return error(callerPtr, "error setting field");
                 }

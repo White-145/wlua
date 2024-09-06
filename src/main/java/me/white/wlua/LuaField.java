@@ -9,4 +9,6 @@ import java.lang.annotation.Target;
 @Target({ ElementType.FIELD, ElementType.METHOD })
 public @interface LuaField {
     String value();
+
+    FieldType type() default FieldType.REGULAR;
 }

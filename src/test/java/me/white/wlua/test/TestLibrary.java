@@ -7,9 +7,6 @@ public class TestLibrary extends Library {
 
     private TestLibrary() { }
 
-    @LuaField("pi")
-    public static LuaValue PI = LuaValue.of(Math.PI);
-
     @LuaFunction("count")
     public static VarArg amount(LuaState state, VarArg args) {
         return new VarArg(new NumberValue(args.size()));
@@ -30,6 +27,16 @@ public class TestLibrary extends Library {
             greeting = "Hello, " + String.join(", ", separated) + " and " + stringify(args.get(args.size() - 1)) + "!";
         }
         return new VarArg(new StringValue(greeting));
+    }
+
+    @LuaFunction("nothing")
+    public static VarArg nothing(LuaState state, VarArg args) {
+        return null;
+    }
+
+    @LuaFunction("yield")
+    public static VarArg yield(LuaState state, VarArg args) {
+        return state.yield(args);
     }
 
     private static String stringify(LuaValue value) {

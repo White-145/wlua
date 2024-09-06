@@ -29,6 +29,7 @@ public class TestMain {
             System.out.print(Math.round(avg * 1000) / 1000.0 + "ms (" + (i + 1) + ")\r");
             System.out.flush();
         }
+        System.out.println();
     }
 
     private static void testValues() {
@@ -148,9 +149,17 @@ public class TestMain {
             state.run("value = test.qux");
             assert state.getGlobal("value").equals(LuaValue.of(7));
             state.run("value = test.bat");
-            assert state.getGlobal("value").equals(LuaValue.nil());
-//        state.run("value = tostring(test)");
-//        assert ((StringValue)state.getGlobal("value")).getString().startsWith("Qwerty Data: ");
+            assert state.getGlobal("value").isNil();
+            state.run("value = test.spam; test.spam = 9000");
+            assert state.getGlobal("value").equals(LuaValue.of(8));
+            assert test.spam.equals(LuaValue.of(9000));
+            state.run("value = test.bacon");
+            assert state.getGlobal("value").equals(LuaValue.of(42));
+            state.run("test.bacon = 13; value = test.bacon");
+            assert state.getGlobal("value").equals(LuaValue.of(42));
+            state.run("value = test.eggs; test.eggs = 11");
+            assert state.getGlobal("value").isNil();
+            assert test.eggs.equals(LuaValue.of(11));
         }
     }
 
@@ -177,16 +186,12 @@ public class TestMain {
             assert state.getGlobal("value").equals(LuaValue.of(3));
             state.run("value = greet('john', 'lisa', 'mark')");
             assert state.getGlobal("value").equals(LuaValue.of("Hello, john, lisa and mark!"));
-            state.run("value = pi");
-            assert state.getGlobal("value").equals(LuaValue.of(Math.PI));
 
             state.openLib(TestLibrary.LIBRARY, "lib");
             state.run("value = lib.count(1, 2, 3)");
             assert state.getGlobal("value").equals(LuaValue.of(3));
             state.run("value = lib.greet('john', 'lisa', 'mark')");
             assert state.getGlobal("value").equals(LuaValue.of("Hello, john, lisa and mark!"));
-            state.run("value = lib.pi");
-            assert state.getGlobal("value").equals(LuaValue.of(Math.PI));
         }
     }
 

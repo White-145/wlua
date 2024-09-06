@@ -5,7 +5,8 @@ import java.util.*;
 
 public abstract class UserData extends LuaValue {
     private boolean hasCollected = false;
-    final Map<String, Field> fields = new HashMap<>();
+    final Map<String, Field> readFields = new HashMap<>();
+    final Map<String, Field> writeFields = new HashMap<>();
     final Map<String, Method> functions = new HashMap<>();
     final EnumMap<MetaMethodType, Method> metaMethods = new EnumMap<>(MetaMethodType.class);
     final Map<String, Method> getters = new HashMap<>();
@@ -27,7 +28,18 @@ public abstract class UserData extends LuaValue {
                 }
                 definedNames.add(name);
                 ValidatorUtil.validateField(field);
-                fields.put(name, field);
+                switch (annotation.type()) {
+                    case READ_ONLY -> {
+                        readFields.put(name, field);
+                    }
+                    case WRITE_ONLY -> {
+                        writeFields.put(name, field);
+                    }
+                    case REGULAR -> {
+                        readFields.put(name, field);
+                        writeFields.put(name, field);
+                    }
+                }
             }
         }
         for (Method method : getClass().getMethods()) {

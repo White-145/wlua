@@ -97,6 +97,10 @@ public abstract class LuaValue {
         return equals(state, this, other);
     }
 
+    public boolean isNil() {
+        return this instanceof NilValue;
+    }
+
     abstract void push(LuaState state);
 
     public static class Ref extends LuaValue {

@@ -6,6 +6,15 @@ public class TestUserData extends UserData {
     private LuaValue qux = LuaValue.nil();
     public LuaValue bar = LuaValue.of("baz");
 
+    @LuaField("spam")
+    public LuaValue spam = LuaValue.of(8);
+
+    @LuaField(value = "bacon", type = FieldType.READ_ONLY)
+    public LuaValue bacon = LuaValue.of(42);
+
+    @LuaField(value = "eggs", type = FieldType.WRITE_ONLY)
+    public LuaValue eggs = LuaValue.of(-1);
+
     @LuaFunction("foo")
     public VarArg foo(LuaState state, VarArg args) {
         if (args.size() == 1 && args.get(0) instanceof NumberValue) {
