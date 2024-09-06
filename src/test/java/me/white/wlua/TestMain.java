@@ -182,14 +182,13 @@ public class TestMain {
         try (LuaState state = new LuaState()) {
             state.setGlobal("yield", LuaValue.of((lua, args) -> {
                 assert args.size() == 1 && args.get(0).equals(LuaValue.of(20));
-                lua.yield();
-                return new VarArg(LuaValue.of(30));
+                return lua.yield(new VarArg(LuaValue.of(30)));
             }));
             FunctionRefValue chunk = LuaValue.chunk(state, """
                     value = 10
                     value = yield(20)
                     """);
-            VarArg result = state.resume(chunk, new VarArg());
+            VarArg result = state.start(chunk);
             assert result.size() == 1 && result.get(0).equals(LuaValue.of(30));
             assert state.getGlobal("value").equals(LuaValue.of(10));
             state.resume(new VarArg(LuaValue.of(40)));

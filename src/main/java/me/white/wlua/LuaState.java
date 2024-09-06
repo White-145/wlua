@@ -124,7 +124,7 @@ public class LuaState extends LuaValue implements AutoCloseable {
         }
     }
 
-    public VarArg resume(FunctionRefValue chunk) {
+    public VarArg start(FunctionRefValue chunk) {
         return resume(chunk, new VarArg());
     }
 
@@ -139,6 +139,11 @@ public class LuaState extends LuaValue implements AutoCloseable {
         synchronized (LOCK) {
             LuaNatives.yield(ptr);
         }
+    }
+
+    public VarArg yield(VarArg result) {
+        this.yield();
+        return result;
     }
 
     public boolean isYieldable() {
