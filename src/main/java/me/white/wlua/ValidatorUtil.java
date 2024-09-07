@@ -2,7 +2,6 @@ package me.white.wlua;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.Map;
 
 public class ValidatorUtil {
     static void validateField(Field field) {
@@ -57,22 +56,34 @@ public class ValidatorUtil {
         }
     }
 
-    static void validateAccessor(Method method, String name, Map<String, Method> getters, Map<String, Method> setters) {
+    static AccessorType validateAccessor(Method method, String name, AccessorType type) {
         String what = "'" + method.getName() + "' for field '" + name + "'";
         if (method.getParameterCount() < 1 || !method.getParameterTypes()[0].isAssignableFrom(LuaState.class)) {
             throw new IllegalStateException("Accessor " + what + " should take at least 1 parameter, with first parameter of type LuaState.");
         }
         if (method.getReturnType() == void.class) {
+            if (type == AccessorType.GETTER) {
+                throw new IllegalStateException("Getter " + what + " should return value of type LuaValue.");
+            }
             if (method.getParameterCount() != 2 || !method.getParameterTypes()[1].isAssignableFrom(LuaValue.class)) {
                 throw new IllegalStateException("Setter " + what + " should take 1 value parameter of type LuaValue.");
             }
-            setters.put(name, method);
+            return AccessorType.SETTER;
         } else if (LuaValue.class.isAssignableFrom(method.getReturnType())) {
+            if (type == AccessorType.SETTER) {
+                throw new IllegalStateException("Setter " + what + " should return void.");
+            }
             if (method.getParameterCount() != 1) {
                 throw new IllegalStateException("Getter " + what + " should take 0 value parameters.");
             }
-            getters.put(name, method);
+            return AccessorType.GETTER;
         } else {
+            if (type == AccessorType.GETTER) {
+                throw new IllegalStateException("Getter " + what + " should return value of type LuaValue.");
+            }
+            if (type == AccessorType.SETTER) {
+                throw new IllegalStateException("Setter " + what + " should return void.");
+            }
             throw new IllegalStateException("Accessor " + what + " should either return value of type LuaValue or return void.");
         }
     }

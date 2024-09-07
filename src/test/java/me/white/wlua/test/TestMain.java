@@ -160,6 +160,10 @@ public class TestMain {
             state.run("value = test.eggs; test.eggs = 11");
             assert state.getGlobal("value").isNil();
             assert test.eggs.equals(LuaValue.of(11));
+
+            TestUserData test2 = new TestUserData();
+            state.run("value = test.foo(nil)");
+            assert state.getGlobal("value").equals(LuaValue.of(99));
         }
     }
 

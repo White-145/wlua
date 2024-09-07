@@ -1,6 +1,6 @@
 package me.white.wlua;
 
-public class NumberValue extends LuaValue {
+public sealed class NumberValue extends LuaValue permits IntegerValue {
     private final double value;
 
     public NumberValue(double value) {

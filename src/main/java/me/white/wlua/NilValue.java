@@ -1,6 +1,6 @@
 package me.white.wlua;
 
-public class NilValue extends LuaValue {
+public final class NilValue extends LuaValue {
     @Override
     void push(LuaState state) {
         LuaNatives.pushNil(state.ptr);

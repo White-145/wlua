@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-public class TableValue extends LuaValue implements Map<LuaValue, LuaValue> {
+public non-sealed class TableValue extends LuaValue implements Map<LuaValue, LuaValue> {
     private final Map<LuaValue, LuaValue> map;
 
     public TableValue() {
@@ -87,7 +87,7 @@ public class TableValue extends LuaValue implements Map<LuaValue, LuaValue> {
     }
 
     @Override
-    void push(LuaState state) {
+    final void push(LuaState state) {
         LuaNatives.newTable(state.ptr, size());
         for (Entry<LuaValue, LuaValue> entry : entrySet()) {
             state.pushValue(entry.getKey());

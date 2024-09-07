@@ -84,15 +84,20 @@ class LuaNatives {
         }
         state.checkIsAlive();
         MetaMethodType type = MetaMethodType.values()[metaMethodType];
-        LuaValue userdata = LuaValue.from(state, 1);
+        LuaValue userdataValue = LuaValue.from(state, 1);
         LuaNatives.remove(state.ptr, 1);
-        if (!(userdata instanceof UserData)) {
+        if (!(userdataValue instanceof UserData)) {
             return error(callerPtr, "error getting userdata");
         }
-        if (!((UserData)userdata).metaMethods.containsKey(type)) {
+        UserData userdata = (UserData)userdataValue;
+        UserData.FieldData fieldData = UserData.getFieldData(userdata.getClass());
+        if (fieldData == null) {
+            return error(callerPtr, "error getting field data");
+        }
+        if (!fieldData.metaMethods.containsKey(type)) {
             return error(callerPtr, "error getting java function");
         }
-        Method method = ((UserData)userdata).metaMethods.get(type);
+        Method method = fieldData.metaMethods.get(type);
         if (type.parameters == -1) {
             int total = LuaNatives.getTop(state.ptr);
             VarArg args = VarArg.collect(state, total);
@@ -146,11 +151,15 @@ class LuaNatives {
             return error(callerPtr, "error getting userdata");
         }
         UserData userdata = (UserData)userdataValue;
+        UserData.FieldData fieldData = UserData.getFieldData(userdata.getClass());
+        if (fieldData == null) {
+            return error(callerPtr, "error getting field data");
+        }
         state.pop(2);
         if (key instanceof StringValue) {
             String name = ((StringValue)key).getString();
-            if (userdata.readFields.containsKey(name)) {
-                Field field = userdata.readFields.get(name);
+            if (fieldData.readFields.containsKey(name)) {
+                Field field = fieldData.readFields.get(name);
                 Object result;
                 try {
                     result = field.get(userdata);
@@ -164,8 +173,8 @@ class LuaNatives {
                 }
                 return 1;
             }
-            if (userdata.functions.containsKey(name)) {
-                Method method = userdata.functions.get(name);
+            if (fieldData.functions.containsKey(name)) {
+                Method method = fieldData.functions.get(name);
                 LuaValue.of((lua, args) -> {
                     Object result;
                     try {
@@ -180,8 +189,8 @@ class LuaNatives {
                 }).push(state);
                 return 1;
             }
-            if (userdata.getters.containsKey(name)) {
-                Method method = userdata.getters.get(name);
+            if (fieldData.getters.containsKey(name)) {
+                Method method = fieldData.getters.get(name);
                 Object result;
                 try {
                     result = method.invoke(userdata, state);
@@ -196,8 +205,8 @@ class LuaNatives {
                 return 1;
             }
         }
-        if (userdata.metaMethods.containsKey(MetaMethodType.INDEX)) {
-            Method method = userdata.metaMethods.get(MetaMethodType.INDEX);
+        if (fieldData.metaMethods.containsKey(MetaMethodType.INDEX)) {
+            Method method = fieldData.metaMethods.get(MetaMethodType.INDEX);
             Object returns;
             try {
                 returns = method.invoke(userdata, state, key);
@@ -225,13 +234,17 @@ class LuaNatives {
             return error(callerPtr, "error getting userdata");
         }
         UserData userdata = (UserData)userdataValue;
+        UserData.FieldData fieldData = UserData.getFieldData(userdata.getClass());
+        if (fieldData == null) {
+            return error(callerPtr, "error getting field data");
+        }
         LuaValue key = LuaValue.from(state, -2);
         LuaValue value = LuaValue.from(state, -1);
         state.pop(3);
         if (key instanceof StringValue) {
             String name = ((StringValue)key).getString();
-            if (userdata.writeFields.containsKey(name)) {
-                Field field = userdata.writeFields.get(name);
+            if (fieldData.writeFields.containsKey(name)) {
+                Field field = fieldData.writeFields.get(name);
                 if (Modifier.isFinal(field.getModifiers())) {
                     return error(callerPtr, "error setting field");
                 }
@@ -242,8 +255,8 @@ class LuaNatives {
                 }
                 return 1;
             }
-            if (userdata.setters.containsKey(name)) {
-                Method method = userdata.setters.get(name);
+            if (fieldData.setters.containsKey(name)) {
+                Method method = fieldData.setters.get(name);
                 try {
                     method.invoke(userdata, state, value);
                 } catch (IllegalAccessException | InvocationTargetException ignored) {
@@ -252,8 +265,8 @@ class LuaNatives {
                 return 1;
             }
         }
-        if (userdata.metaMethods.containsKey(MetaMethodType.NEW_INDEX)) {
-            Method method = userdata.metaMethods.get(MetaMethodType.NEW_INDEX);
+        if (fieldData.metaMethods.containsKey(MetaMethodType.NEW_INDEX)) {
+            Method method = fieldData.metaMethods.get(MetaMethodType.NEW_INDEX);
             try {
                 method.invoke(userdata, state, key, value);
             } catch (IllegalAccessException | InvocationTargetException ignored) {

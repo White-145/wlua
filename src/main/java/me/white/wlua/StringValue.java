@@ -2,7 +2,7 @@ package me.white.wlua;
 
 import java.util.Objects;
 
-public class StringValue extends LuaValue {
+public final class StringValue extends LuaValue {
     private final String value;
 
     public StringValue(String value) {

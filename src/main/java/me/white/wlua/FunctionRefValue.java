@@ -1,7 +1,7 @@
 package me.white.wlua;
 
-public class FunctionRefValue extends LuaValue.Ref {
-    protected FunctionRefValue(LuaState state, int index) {
+public final class FunctionRefValue extends LuaValue.Ref {
+    FunctionRefValue(LuaState state, int index) {
         super(state, index);
     }
 

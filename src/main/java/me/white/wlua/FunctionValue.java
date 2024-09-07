@@ -2,7 +2,7 @@ package me.white.wlua;
 
 import java.util.Objects;
 
-public class FunctionValue extends LuaValue {
+public final class FunctionValue extends LuaValue {
     private final Function function;
 
     public FunctionValue(Function function) {

@@ -3,7 +3,7 @@ package me.white.wlua;
 import java.lang.ref.Cleaner;
 import java.util.*;
 
-public abstract class LuaValue {
+public sealed abstract class LuaValue permits LuaValue.Ref, BooleanValue, FunctionValue, LuaState, NilValue, NumberValue, StringValue, TableValue, UserData {
     private static final Cleaner CLEANER = Cleaner.create();
 
     static LuaValue from(LuaState state, int index) {
@@ -103,7 +103,7 @@ public abstract class LuaValue {
 
     abstract void push(LuaState state);
 
-    public static class Ref extends LuaValue {
+    public static sealed class Ref extends LuaValue permits FunctionRefValue, TableRefValue {
         private final Cleaner.Cleanable cleanable;
         private final CleanableRef cleanableRef;
         protected final LuaState state;
@@ -133,7 +133,7 @@ public abstract class LuaValue {
         }
 
         @Override
-        void push(LuaState state) {
+        final void push(LuaState state) {
             checkIsAlive();
             if (this.state.mainThread != state.mainThread) {
                 throw new IllegalStateException("Cannot move references between threads.");

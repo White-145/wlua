@@ -2,7 +2,7 @@ package me.white.wlua;
 
 import java.util.*;
 
-public class LuaState extends LuaValue implements AutoCloseable {
+public non-sealed class LuaState extends LuaValue implements AutoCloseable {
     private boolean isClosed = false;
     private int id;
     final Object LOCK = new Object();
@@ -167,7 +167,7 @@ public class LuaState extends LuaValue implements AutoCloseable {
     }
 
     @Override
-    void push(LuaState state) {
+    final void push(LuaState state) {
         synchronized (LOCK) {
             state.checkIsAlive();
             if (state.mainThread.isSubThread(this)) {

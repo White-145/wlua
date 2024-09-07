@@ -2,8 +2,8 @@ package me.white.wlua;
 
 import java.util.*;
 
-public class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValue> {
-    protected TableRefValue(LuaState state, int index) {
+public final class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValue> {
+    TableRefValue(LuaState state, int index) {
         super(state, index);
     }
 

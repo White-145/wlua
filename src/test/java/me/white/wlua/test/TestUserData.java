@@ -17,7 +17,7 @@ public class TestUserData extends UserData {
 
     @LuaFunction("foo")
     public VarArg foo(LuaState state, VarArg args) {
-        if (args.size() == 1 && args.get(0) instanceof NumberValue) {
+        if (args.get(0) instanceof NumberValue) {
             return new VarArg(new NumberValue(99 + ((NumberValue)args.get(0)).getNumber()));
         }
         return new VarArg(LuaValue.of(99));
@@ -49,7 +49,7 @@ public class TestUserData extends UserData {
         return LuaValue.of("length");
     }
 
-    @LuaField("bar")
+    @LuaAccessor("bar")
     public LuaValue getBar(LuaState state) {
         if (bar instanceof NumberValue) {
             return new NumberValue(((NumberValue)bar).getNumber() * 2);
@@ -57,7 +57,7 @@ public class TestUserData extends UserData {
         return bar;
     }
 
-    @LuaField("bar")
+    @LuaAccessor(value = "bar", type = AccessorType.SETTER)
     public void setBar(LuaState state, LuaValue value) {
         bar = value;
     }

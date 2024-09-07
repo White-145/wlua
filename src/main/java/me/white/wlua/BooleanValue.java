@@ -1,6 +1,6 @@
 package me.white.wlua;
 
-public class BooleanValue extends LuaValue {
+public final class BooleanValue extends LuaValue {
     private final boolean value;
 
     public BooleanValue(boolean value) {
