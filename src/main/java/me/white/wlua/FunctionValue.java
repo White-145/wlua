@@ -1,28 +1,10 @@
 package me.white.wlua;
 
-import java.util.Objects;
-
-public final class FunctionValue extends LuaValue {
-    private final Function function;
-
-    public FunctionValue(Function function) {
-        Objects.requireNonNull(function);
-        this.function = function;
-    }
-
-    public VarArg run(LuaState state, VarArg args) {
-        state.checkIsAlive();
-        return function.run(state, args);
-    }
-
-    @Override
-    void push(LuaState state) {
-        state.checkIsAlive();
-        LuaNatives.pushFunction(state.ptr, function);
-    }
+public interface FunctionValue {
+    VarArg run(LuaState state, VarArg args);
 
     @FunctionalInterface
-    public interface Function {
+    interface Function {
         VarArg run(LuaState state, VarArg args);
     }
 }

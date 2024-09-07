@@ -1,10 +1,11 @@
 package me.white.wlua;
 
-public final class FunctionRefValue extends LuaValue.Ref {
+public final class FunctionRefValue extends LuaValue.Ref implements FunctionValue {
     FunctionRefValue(LuaState state, int index) {
         super(state, index);
     }
 
+    @Override
     public VarArg run(LuaState state, VarArg args) {
         checkIsAlive();
         int top = LuaNatives.getTop(state.ptr);

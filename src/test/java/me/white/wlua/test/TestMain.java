@@ -68,7 +68,7 @@ public class TestMain {
 
     private static void testTable() {
         try (LuaState state = new LuaState()) {
-            TableRefValue table = new TableValue().toReference(state);
+            TableRefValue table = new TableLiteralValue().toReference(state);
             assert table.isEmpty();
             table.put(LuaValue.of("kind value"), LuaValue.of(true));
             table.put(LuaValue.of("evil value"), LuaValue.of(false));
@@ -110,7 +110,7 @@ public class TestMain {
 
     private static void testFunction() {
         try (LuaState state = new LuaState()) {
-            FunctionValue func = LuaValue.of((lua, args) -> {
+            FunctionLiteralValue func = LuaValue.of((lua, args) -> {
                 return new VarArg(args.get(0), args.get(0));
             });
             VarArg ret = func.run(state, new VarArg(LuaValue.of("string"), LuaValue.nil()));
@@ -204,7 +204,7 @@ public class TestMain {
             state.setGlobal("yield", LuaValue.of((lua, args) -> {
                 return lua.yield(new VarArg(LuaValue.of(30)));
             }));
-            FunctionRefValue chunk = LuaValue.chunk(state, """
+            FunctionRefValue chunk = state.load("""
                     value = 10
                     value = yield(20)
                     """);

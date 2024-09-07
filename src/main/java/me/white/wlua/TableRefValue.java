@@ -2,14 +2,14 @@ package me.white.wlua;
 
 import java.util.*;
 
-public final class TableRefValue extends LuaValue.Ref implements Map<LuaValue, LuaValue> {
+public final class TableRefValue extends LuaValue.Ref implements TableValue {
     TableRefValue(LuaState state, int index) {
         super(state, index);
     }
 
-    public TableValue copy() {
+    public TableLiteralValue copy() {
         checkIsAlive();
-        return new TableValue(this);
+        return new TableLiteralValue(this);
     }
 
     @Override

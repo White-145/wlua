@@ -3,7 +3,7 @@ package me.white.wlua;
 import java.lang.ref.Cleaner;
 import java.util.*;
 
-public sealed abstract class LuaValue permits LuaValue.Ref, BooleanValue, FunctionValue, LuaState, NilValue, NumberValue, StringValue, TableValue, UserData {
+public sealed abstract class LuaValue permits LuaValue.Ref, BooleanValue, FunctionLiteralValue, LuaState, NilValue, NumberValue, StringValue, TableLiteralValue, UserData {
     private static final Cleaner CLEANER = Cleaner.create();
 
     static LuaValue from(LuaState state, int index) {
@@ -59,12 +59,12 @@ public sealed abstract class LuaValue permits LuaValue.Ref, BooleanValue, Functi
         return new StringValue(value);
     }
 
-    public static FunctionValue of(FunctionValue.Function value) {
-        return new FunctionValue(value);
+    public static FunctionLiteralValue of(FunctionLiteralValue.Function value) {
+        return new FunctionLiteralValue(value);
     }
 
-    public static TableValue of(Map<LuaValue, LuaValue> value) {
-        return new TableValue(value);
+    public static TableLiteralValue of(Map<LuaValue, LuaValue> value) {
+        return new TableLiteralValue(value);
     }
 
     public static NilValue of() {
@@ -75,7 +75,7 @@ public sealed abstract class LuaValue permits LuaValue.Ref, BooleanValue, Functi
         return new NilValue();
     }
 
-    public static FunctionRefValue chunk(LuaState state, String chunk) {
+    static FunctionRefValue chunk(LuaState state, String chunk) {
         state.checkIsAlive();
         int code = LuaNatives.loadString(state.ptr, chunk);
         LuaException.checkError(code, state);
