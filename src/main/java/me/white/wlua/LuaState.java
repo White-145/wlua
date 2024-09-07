@@ -140,18 +140,18 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
         return resume(null, args);
     }
 
-    public void yield() {
+    public VarArg yield(VarArg result) {
         if (!isYieldable()) {
             throw new IllegalStateException("Cannot yield non-yieldable state");
         }
         synchronized (LOCK) {
             LuaNatives.yield(ptr);
+            return result;
         }
     }
 
-    public VarArg yield(VarArg result) {
-        this.yield();
-        return result;
+    public VarArg yield() {
+        return this.yield(new VarArg());
     }
 
     public boolean isYieldable() {
