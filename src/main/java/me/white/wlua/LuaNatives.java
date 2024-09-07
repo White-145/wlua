@@ -21,47 +21,21 @@ class LuaNatives {
         return -1;
     }
 
-    private static int invoke(long callerPtr, int stateIndex, Object function, int params) {
-        LuaState state = LuaInstances.get(stateIndex);
-        if (state == null) {
-            return error(callerPtr, "error getting lua state");
-        }
-        state.checkIsAlive();
-        if (!(function instanceof FunctionLiteralValue.Function)) {
-            return error(callerPtr, "error invoking java function");
-        }
-        VarArg args = VarArg.collect(state, params);
-        VarArg results = ((FunctionLiteralValue.Function)function).run(state, args);
-        if (results != null) {
-            results.push(state);
-            return results.size();
-        }
-        return 0;
+    private static int fail(long ptr) {
+        LuaNatives.pushFail(ptr);
+        return 1;
     }
 
-    private static int invokeMethod(long callerPtr, int stateIndex, Object method, int params) {
-        LuaState state = LuaInstances.get(stateIndex);
-        if (state == null) {
-            return error(callerPtr, "error getting lua state");
+    private static int pushOrFail(LuaState state, Object result) {
+        if (result instanceof VarArg) {
+            ((VarArg)result).push(state);
+            return ((VarArg)result).size();
         }
-        state.checkIsAlive();
-        if (!(method instanceof Method)) {
-            return error(callerPtr, "error invoking java function");
+        if (result instanceof LuaValue) {
+            ((LuaValue)result).push(state);
+            return 1;
         }
-        VarArg args = VarArg.collect(state, params);
-        Object resultsObject;
-        try {
-            resultsObject = ((Method)method).invoke(null, state, args);
-        } catch (InvocationTargetException | IllegalAccessException ignored) {
-            return error(callerPtr, "error invoking java function");
-        }
-        if (!(resultsObject instanceof VarArg)) {
-            LuaNatives.pushNil(state.ptr);
-            return 0;
-        }
-        VarArg results = (VarArg)resultsObject;
-        results.push(state);
-        return results.size();
+        return fail(state.ptr);
     }
 
     private static int adopt(int mainId, long ptr) {
@@ -75,6 +49,39 @@ class LuaNatives {
             state.addSubThread(child);
             return child;
         });
+    }
+
+    private static int invoke(long callerPtr, int stateIndex, Object function, int params) {
+        LuaState state = LuaInstances.get(stateIndex);
+        if (state == null) {
+            return error(callerPtr, "error getting lua state");
+        }
+        state.checkIsAlive();
+        if (!(function instanceof FunctionLiteralValue.Function)) {
+            return error(callerPtr, "error invoking java function");
+        }
+        VarArg args = VarArg.collect(state, params);
+        VarArg results = ((FunctionLiteralValue.Function)function).run(state, args);
+        return pushOrFail(state, results);
+    }
+
+    private static int invokeMethod(long callerPtr, int stateIndex, Object method, int params) {
+        LuaState state = LuaInstances.get(stateIndex);
+        if (state == null) {
+            return error(callerPtr, "error getting lua state");
+        }
+        state.checkIsAlive();
+        if (!(method instanceof Method)) {
+            return error(callerPtr, "error invoking java function");
+        }
+        VarArg args = VarArg.collect(state, params);
+        Object results;
+        try {
+            results = ((Method)method).invoke(null, state, args);
+        } catch (InvocationTargetException | IllegalAccessException ignored) {
+            return error(callerPtr, "error invoking java function");
+        }
+        return pushOrFail(state, results);
     }
 
     private static int invokeMeta(long callerPtr, int stateIndex, int metaMethodType) {
@@ -101,17 +108,13 @@ class LuaNatives {
         if (type.parameters == -1) {
             int total = LuaNatives.getTop(state.ptr);
             VarArg args = VarArg.collect(state, total);
-            Object returnValue;
+            Object results;
             try {
-                returnValue = method.invoke(userdata, state, args);
+                results = method.invoke(userdata, state, args);
             } catch (InvocationTargetException | IllegalAccessException ignored) {
                 return error(callerPtr, "error invoking java function");
             }
-            if (returnValue instanceof VarArg) {
-                ((VarArg)returnValue).push(state);
-                return ((VarArg)returnValue).size();
-            }
-            return 0;
+            return pushOrFail(state, results);
         }
         if (type.doubleReference) {
             LuaNatives.remove(state.ptr, 1);
@@ -122,21 +125,16 @@ class LuaNatives {
             values[i + 1] = LuaValue.from(state, i - type.parameters);
         }
         state.pop(type.parameters);
-        Object returnValue;
+        Object results;
         try {
-            returnValue = method.invoke(userdata, values);
+            results = method.invoke(userdata, values);
         } catch (InvocationTargetException | IllegalAccessException ignored) {
             return error(callerPtr, "error invoking java function");
         }
         if (type.returns == 0) {
             return 0;
         }
-        if (returnValue instanceof LuaValue) {
-            ((LuaValue)returnValue).push(state);
-        } else {
-            LuaNatives.pushNil(state.ptr);
-        }
-        return 1;
+        return pushOrFail(state, results);
     }
 
     public static int index(long callerPtr, int stateIndex) {
@@ -160,65 +158,50 @@ class LuaNatives {
             String name = ((StringValue)key).getString();
             if (fieldData.readFields.containsKey(name)) {
                 Field field = fieldData.readFields.get(name);
-                Object result;
+                Object results;
                 try {
-                    result = field.get(userdata);
+                    results = field.get(userdata);
                 } catch (IllegalAccessException ignored) {
                     return error(callerPtr, "error getting field");
                 }
-                if (result instanceof LuaValue) {
-                    ((LuaValue)result).push(state);
-                } else {
-                    LuaNatives.pushNil(state.ptr);
-                }
-                return 1;
+                return pushOrFail(state, results);
             }
             if (fieldData.functions.containsKey(name)) {
                 Method method = fieldData.functions.get(name);
                 LuaValue.of((lua, args) -> {
-                    Object result;
+                    Object results;
                     try {
-                        result = method.invoke(userdata, lua, args);
+                        results = method.invoke(userdata, lua, args);
                     } catch (IllegalAccessException | InvocationTargetException ignored) {
                         throw new IllegalStateException("Could not invoke java function '" + method.getName() + "'.");
                     }
-                    if (result instanceof VarArg) {
-                        return (VarArg)result;
+                    if (results instanceof VarArg) {
+                        return (VarArg)results;
                     }
-                    return new VarArg();
+                    return new VarArg(LuaValue.fail());
                 }).push(state);
                 return 1;
             }
             if (fieldData.getters.containsKey(name)) {
                 Method method = fieldData.getters.get(name);
-                Object result;
+                Object results;
                 try {
-                    result = method.invoke(userdata, state);
+                    results = method.invoke(userdata, state);
                 } catch (IllegalAccessException | InvocationTargetException ignored) {
                     return error(callerPtr, "error invoking java function");
                 }
-                if (result instanceof LuaValue) {
-                    ((LuaValue)result).push(state);
-                } else {
-                    LuaNatives.pushNil(state.ptr);
-                }
-                return 1;
+                return pushOrFail(state, results);
             }
         }
         if (fieldData.metaMethods.containsKey(MetaMethodType.INDEX)) {
             Method method = fieldData.metaMethods.get(MetaMethodType.INDEX);
-            Object returns;
+            Object results;
             try {
-                returns = method.invoke(userdata, state, key);
+                results = method.invoke(userdata, state, key);
             } catch (IllegalAccessException | InvocationTargetException ignored) {
                 return error(callerPtr, "error invoking java function");
             }
-            if (returns instanceof LuaValue) {
-                ((LuaValue)returns).push(state);
-            } else {
-                LuaNatives.pushNil(state.ptr);
-            }
-            return 1;
+            return pushOrFail(state, results);
         }
         return 0;
     }
@@ -869,6 +852,25 @@ class LuaNatives {
         lua_pushcclosure(L, &function_wrapper, 1);
     */
 
+    static native void pushMethod(long ptr, Method method); /*
+        lua_State* L = (lua_State*)ptr;
+        jobject global_ref = env->NewGlobalRef(method);
+        if (env->ExceptionOccurred()) {
+            lua_pushstring(L, "error creating global reference");
+            lua_error(L);
+            return;
+        }
+        jobject* userdata = (jobject*)lua_newuserdatauv(L, sizeof(global_ref), 0);
+        *userdata = global_ref;
+        luaL_setmetatable(L, JAVA_OBJECT_GC);
+        lua_pushcclosure(L, &method_wrapper, 1);
+    */
+
+    static native void pushFail(long ptr); /*
+        lua_State* L = (lua_State*)ptr;
+        lua_pushnil(L);
+    */
+
     static native void newTable(long ptr, int size); /*
         lua_State* L = (lua_State*)ptr;
         lua_createtable(L, 0, (int)size);
@@ -1060,20 +1062,6 @@ class LuaNatives {
     static native boolean compareValues(long ptr, int index1, int index2, int op); /*
         lua_State* L = (lua_State*)ptr;
         return JAVA_BOOLEAN(lua_compare(L, (int)index1, (int)index2, (int)op));
-    */
-
-    static native void pushMethod(long ptr, Method method); /*
-        lua_State* L = (lua_State*)ptr;
-        jobject global_ref = env->NewGlobalRef(method);
-        if (env->ExceptionOccurred()) {
-            lua_pushstring(L, "error creating global reference");
-            lua_error(L);
-            return;
-        }
-        jobject* userdata = (jobject*)lua_newuserdatauv(L, sizeof(global_ref), 0);
-        *userdata = global_ref;
-        luaL_setmetatable(L, JAVA_OBJECT_GC);
-        lua_pushcclosure(L, &method_wrapper, 1);
     */
 
     static native int resume(long ptr, int args); /*

@@ -13,6 +13,10 @@ public class VarArg {
         this(values.toArray(new LuaValue[0]));
     }
 
+    public static VarArg of(LuaValue ... values) {
+        return new VarArg(values);
+    }
+
     public LuaValue[] getValues() {
         return values;
     }

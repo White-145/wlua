@@ -1,9 +1,14 @@
 package me.white.wlua;
 
-public final class NilValue extends LuaValue {
+public sealed class NilValue extends LuaValue permits FailValue {
     @Override
     void push(LuaState state) {
         LuaNatives.pushNil(state.ptr);
+    }
+
+    @Override
+    public boolean isNil() {
+        return true;
     }
 
     @Override

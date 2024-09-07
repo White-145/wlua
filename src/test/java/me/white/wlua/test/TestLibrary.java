@@ -31,7 +31,7 @@ public class TestLibrary extends Library {
 
     @LuaFunction("nothing")
     public static VarArg nothing(LuaState state, VarArg args) {
-        return null;
+        return VarArg.of();
     }
 
     @LuaFunction("yield")
