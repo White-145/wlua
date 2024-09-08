@@ -132,8 +132,8 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
         }
     }
 
-    public VarArg start(FunctionRefValue chunk) {
-        return resume(chunk, new VarArg());
+    public VarArg start(FunctionRefValue chunk, VarArg args) {
+        return resume(chunk, args);
     }
 
     public VarArg resume(VarArg args) {
