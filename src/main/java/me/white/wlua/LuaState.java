@@ -18,18 +18,14 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
         this.ptr = ptr;
         this.id = state_id == -1 ? LuaInstances.add(this) : state_id;
         this.mainThread = mainThread == null ? this : mainThread;
+        if (mainThread != null) {
+            mainThread.subThreads.add(this);
+        }
         LuaNatives.initState(ptr, id);
     }
 
     public LuaState() {
         this(LuaNatives.newState(), -1, null);
-    }
-
-    void addSubThread(LuaState thread) {
-        synchronized (LOCK) {
-            checkIsAlive();
-            subThreads.add(thread);
-        }
     }
 
     void pop(int n) {
@@ -54,6 +50,15 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
 
     public boolean isSubThread(LuaState thread) {
         return thread == this || subThreads.contains(thread);
+    }
+
+    public LuaState subThread() {
+        synchronized (LOCK) {
+            checkIsAlive();
+            long threadPtr = LuaNatives.newThread(ptr);
+            int threadId = LuaInstances.add((id) -> new LuaState(ptr, id, this));
+            return LuaInstances.get(threadId);
+        }
     }
 
     public void openLibs() {

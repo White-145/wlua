@@ -208,12 +208,36 @@ public class TestMain {
                     value = 10
                     value = yield(20)
                     """);
-            VarArg result = state.start(chunk);
+            VarArg result = state.start(chunk, new VarArg());
             assert result.size() == 1 && result.get(0).equals(LuaValue.of(30));
             assert state.getGlobal("value").equals(LuaValue.of(10));
             state.resume(new VarArg(LuaValue.of(40)));
             assert state.getGlobal("value").equals(LuaValue.of(40));
             assert !state.isSuspended();
+        }
+    }
+
+    private static void testThreads() {
+        try (LuaState state = new LuaState()) {
+            LuaState thread = state.subThread();
+            state.setGlobal("yield", LuaValue.of((lua, args) -> {
+                return lua.yield();
+            }));
+            FunctionRefValue chunk = state.load("""
+                    value = 10
+                    yield()
+                    value = 20
+                    """);
+            state.start(chunk, new VarArg());
+            assert state.getGlobal("value").equals(LuaValue.of(10));
+            thread.start(chunk, new VarArg());
+            state.resume(new VarArg());
+            assert !state.isSuspended();
+            assert thread.isSuspended();
+            assert state.getGlobal("value").equals(LuaValue.of(20));
+            assert thread.getGlobal("value").equals(LuaValue.of(10));
+            thread.resume(new VarArg());
+            assert thread.getGlobal("value").equals(LuaValue.of(20));
         }
     }
 }
