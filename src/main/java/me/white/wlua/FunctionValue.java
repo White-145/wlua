@@ -1,6 +1,6 @@
 package me.white.wlua;
 
-public interface FunctionValue {
+public sealed interface FunctionValue permits FunctionLiteralValue, FunctionRefValue {
     VarArg run(LuaState state, VarArg args);
 
     @FunctionalInterface
