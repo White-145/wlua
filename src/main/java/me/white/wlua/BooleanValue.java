@@ -18,6 +18,11 @@ public final class BooleanValue extends LuaValue {
     }
 
     @Override
+    public boolean isTrue() {
+        return value;
+    }
+
+    @Override
     public String toString() {
         return String.valueOf(value);
     }

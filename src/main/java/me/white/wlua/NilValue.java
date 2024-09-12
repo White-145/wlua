@@ -12,6 +12,11 @@ public sealed class NilValue extends LuaValue permits FailValue {
     }
 
     @Override
+    public boolean isTrue() {
+        return false;
+    }
+
+    @Override
     public String toString() {
         return "nil";
     }

@@ -105,6 +105,10 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
         return false;
     }
 
+    public boolean isTrue() {
+        return true;
+    }
+
     abstract void push(LuaState state);
 
     public static sealed class Ref extends LuaValue permits FunctionRefValue, TableRefValue {
