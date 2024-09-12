@@ -2,5 +2,5 @@ package me.white.wlua;
 
 import java.util.Map;
 
-public interface TableValue extends Map<LuaValue, LuaValue> {
+public sealed interface TableValue extends Map<LuaValue, LuaValue> permits TableLiteralValue, TableRefValue {
 }

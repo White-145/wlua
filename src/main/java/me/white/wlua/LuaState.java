@@ -114,18 +114,18 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
         }
     }
 
-    public VarArg run(FunctionRefValue chunk, VarArg args) {
+    public VarArg run(FunctionValue chunk, VarArg args) {
         synchronized (LOCK) {
             return chunk.run(this, args);
         }
     }
 
-    private VarArg resume(FunctionRefValue chunk, VarArg args) {
+    private VarArg resume(FunctionValue chunk, VarArg args) {
         synchronized (LOCK) {
             checkIsAlive();
             int top = LuaNatives.getTop(ptr);
             if (chunk != null) {
-                chunk.push(this);
+                ((LuaValue)chunk).push(this);
             } else if (!isSuspended()) {
                 throw new IllegalStateException("Cannot resume not suspended state.");
             }
@@ -137,7 +137,7 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
         }
     }
 
-    public VarArg start(FunctionRefValue chunk, VarArg args) {
+    public VarArg start(FunctionValue chunk, VarArg args) {
         return resume(chunk, args);
     }
 
