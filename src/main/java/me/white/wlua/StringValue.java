@@ -22,7 +22,7 @@ public final class StringValue extends LuaValue {
 
     @Override
     public String toString() {
-        return "\"" + value + "\"";
+        return value;
     }
 
     @Override
