@@ -14,7 +14,6 @@ public class TestMain {
         testFunction();
         testUserData();
         testConcurrencyRef();
-        testLibraries();
         testCoroutines();
     }
 
@@ -34,36 +33,36 @@ public class TestMain {
 
     private static void testValues() {
         try (LuaState state = new LuaState()) {
-        BooleanValue bool = LuaValue.of(true);
-        state.setGlobal("value", bool);
-        LuaValue value = state.getGlobal("value");
-        assert value.equals(bool);
-        assert ((BooleanValue)value).getBoolean();
+            BooleanValue bool = LuaValue.of(true);
+            state.setGlobal("value", bool);
+            LuaValue value = state.getGlobal("value");
+            assert value.equals(bool);
+            assert ((BooleanValue)value).getBoolean();
 
-        IntegerValue integer = LuaValue.of(21);
-        state.setGlobal("value", integer);
-        value = state.getGlobal("value");
-        assert value.equals(integer);
-        assert ((IntegerValue)value).getInteger() == 21;
+            IntegerValue integer = LuaValue.of(21);
+            state.setGlobal("value", integer);
+            value = state.getGlobal("value");
+            assert value.equals(integer);
+            assert ((IntegerValue)value).getInteger() == 21;
 
-        NumberValue number = LuaValue.of(182.4);
-        state.setGlobal("value", number);
-        value = state.getGlobal("value");
-        assert value.equals(number);
-        assert ((NumberValue)value).getNumber() == 182.4;
+            NumberValue number = LuaValue.of(182.4);
+            state.setGlobal("value", number);
+            value = state.getGlobal("value");
+            assert value.equals(number);
+            assert ((NumberValue)value).getNumber() == 182.4;
 
-        StringValue str = LuaValue.of("test string");
-        state.setGlobal("value", str);
-        value = state.getGlobal("value");
-        assert value.equals(str);
-        assert ((StringValue)value).getString().equals("test string");
+            StringValue str = LuaValue.of("test string");
+            state.setGlobal("value", str);
+            value = state.getGlobal("value");
+            assert value.equals(str);
+            assert ((StringValue)value).getString().equals("test string");
 
-        NilValue nil = LuaValue.of();
-        state.setGlobal("value", nil);
-        value = state.getGlobal("value");
-        assert value.equals(nil);
-        assert state.getGlobal("not existant").equals(nil);
-    }
+            NilValue nil = LuaValue.of();
+            state.setGlobal("value", nil);
+            value = state.getGlobal("value");
+            assert value.equals(nil);
+            assert state.getGlobal("not existant").equals(nil);
+        }
     }
 
     private static void testTable() {
@@ -180,22 +179,6 @@ public class TestMain {
                 state.run("b()");
                 state.getGlobal("b");
             }
-        }
-    }
-
-    private static void testLibraries() {
-        try (LuaState state = new LuaState()) {
-            state.openLib(TestLibrary.LIBRARY);
-            state.run("value = count(1, 2, 3)");
-            assert state.getGlobal("value").equals(LuaValue.of(3));
-            state.run("value = greet('john', 'lisa', 'mark')");
-            assert state.getGlobal("value").equals(LuaValue.of("Hello, john, lisa and mark!"));
-
-            state.openLib(TestLibrary.LIBRARY, "lib");
-            state.run("value = lib.count(1, 2, 3)");
-            assert state.getGlobal("value").equals(LuaValue.of(3));
-            state.run("value = lib.greet('john', 'lisa', 'mark')");
-            assert state.getGlobal("value").equals(LuaValue.of("Hello, john, lisa and mark!"));
         }
     }
 

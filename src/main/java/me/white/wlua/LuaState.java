@@ -68,21 +68,6 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
         }
     }
 
-    public void openLib(Library library, String name) {
-        synchronized (LOCK) {
-            checkIsAlive();
-            if (name == null) {
-                library.openGlobal(this);
-            } else {
-                library.open(this, name);
-            }
-        }
-    }
-
-    public void openLib(Library library) {
-        openLib(library, null);
-    }
-
     public void setGlobal(String name, LuaValue value) {
         synchronized (LOCK) {
             checkIsAlive();
@@ -104,13 +89,17 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
     public FunctionRefValue load(String chunk) {
         synchronized (LOCK) {
             checkIsAlive();
-            return LuaValue.chunk(this, chunk);
+            int code = LuaNatives.loadString(ptr, chunk);
+            LuaException.checkError(code, this);
+            LuaValue value = LuaValue.from(this, -1);
+            pop(1);
+            return (FunctionRefValue)value;
         }
     }
 
-    public VarArg run(String code) {
+    public VarArg run(String chunk) {
         synchronized (LOCK) {
-            return LuaValue.chunk(this, code).run(this, new VarArg());
+            return load(chunk).run(this, new VarArg());
         }
     }
 

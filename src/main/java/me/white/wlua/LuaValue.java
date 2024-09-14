@@ -79,15 +79,6 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
         return new FailValue();
     }
 
-    static FunctionRefValue chunk(LuaState state, String chunk) {
-        state.checkIsAlive();
-        int code = LuaNatives.loadString(state.ptr, chunk);
-        LuaException.checkError(code, state);
-        LuaValue value = from(state, -1);
-        state.pop(1);
-        return (FunctionRefValue)value;
-    }
-
     public static boolean equals(LuaState state, LuaValue value1, LuaValue value2) {
         state.checkIsAlive();
         state.pushValue(value1);
