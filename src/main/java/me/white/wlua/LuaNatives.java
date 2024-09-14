@@ -264,6 +264,7 @@ class LuaNatives {
         #include "lualib.h"
         #include "lauxlib.h"
     }
+    #include <cstring>
 
     #define JAVA_STATE_INDEX "state_index"
     #define JAVA_OBJECT_GC "object_gc"
@@ -1024,9 +1025,9 @@ class LuaNatives {
         return (jint)lua_pcall(L, args, returns, 0);
     */
 
-    static native int loadString(long ptr, String string); /*
+    static native int loadString(long ptr, String string, String name); /*
         lua_State* L = (lua_State*)ptr;
-        return (jint)luaL_loadstring(L, string);
+        return (jint)luaL_loadbuffer(L, string, std::strlen(string), name);
     */
 
     static native boolean compareValues(long ptr, int index1, int index2, int op); /*

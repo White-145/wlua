@@ -86,15 +86,19 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
         }
     }
 
-    public FunctionRefValue load(String chunk) {
+    public FunctionRefValue load(String chunk, String name) {
         synchronized (LOCK) {
             checkIsAlive();
-            int code = LuaNatives.loadString(ptr, chunk);
+            int code = LuaNatives.loadString(ptr, chunk, name);
             LuaException.checkError(code, this);
             LuaValue value = LuaValue.from(this, -1);
             pop(1);
             return (FunctionRefValue)value;
         }
+    }
+
+    public FunctionRefValue load(String chunk) {
+        return load(chunk, chunk);
     }
 
     public VarArg run(String chunk) {
