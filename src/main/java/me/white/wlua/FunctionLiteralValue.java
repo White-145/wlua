@@ -11,6 +11,11 @@ public final class FunctionLiteralValue extends LuaValue implements FunctionValu
     }
 
     @Override
+    public ValueType getType() {
+        return ValueType.FUNCTION;
+    }
+
+    @Override
     void push(LuaState state) {
         state.checkIsAlive();
         LuaNatives.pushFunction(state.ptr, function);

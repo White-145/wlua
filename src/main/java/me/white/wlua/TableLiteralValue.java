@@ -1,19 +1,16 @@
 package me.white.wlua;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public non-sealed class TableLiteralValue extends LuaValue implements TableValue {
-    private final Map<LuaValue, LuaValue> map;
-
-    public TableLiteralValue() {
-        this.map = new HashMap<>();
-    }
+    protected final Map<LuaValue, LuaValue> map;
 
     public TableLiteralValue(Map<LuaValue, LuaValue> map) {
         this.map = new HashMap<>(map);
+    }
+
+    public TableLiteralValue() {
+        this(new HashMap<>());
     }
 
     public TableRefValue toReference(LuaState state) {
@@ -84,6 +81,11 @@ public non-sealed class TableLiteralValue extends LuaValue implements TableValue
     @Override
     public Set<Entry<LuaValue, LuaValue>> entrySet() {
         return map.entrySet();
+    }
+
+    @Override
+    public final ValueType getType() {
+        return ValueType.TABLE;
     }
 
     @Override

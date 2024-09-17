@@ -3,9 +3,9 @@ package me.white.wlua;
 import java.util.*;
 
 public non-sealed class LuaState extends LuaValue implements AutoCloseable {
+    private final Object LOCK = new Object();
     private boolean isClosed = false;
     private int id;
-    final Object LOCK = new Object();
     long ptr;
     List<LuaState> subThreads = new ArrayList<>();
     Set<Integer> aliveReferences = new HashSet<>();
@@ -39,6 +39,15 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
         synchronized (LOCK) {
             checkIsAlive();
             value.push(this);
+        }
+    }
+
+    void cleanReference(int reference) {
+        synchronized (LOCK) {
+            if (!isClosed() && aliveReferences.contains(reference)) {
+                LuaNatives.deleteRef(ptr, reference);
+                aliveReferences.remove(reference);
+            }
         }
     }
 
@@ -162,6 +171,11 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
 
     public boolean isClosed() {
         return mainThread.isClosed;
+    }
+
+    @Override
+    public final ValueType getType() {
+        return ValueType.THREAD;
     }
 
     @Override

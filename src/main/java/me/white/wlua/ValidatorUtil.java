@@ -3,7 +3,7 @@ package me.white.wlua;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
-public class ValidatorUtil {
+class ValidatorUtil {
     static void validateField(Field field) {
         if (!LuaValue.class.isAssignableFrom(field.getType())) {
             throw new IllegalStateException("Field '" + field.getName() + "' should be of type LuaValue.");

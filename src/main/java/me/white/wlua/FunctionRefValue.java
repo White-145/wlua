@@ -6,6 +6,11 @@ public final class FunctionRefValue extends LuaValue.Ref implements FunctionValu
     }
 
     @Override
+    public ValueType getType() {
+        return ValueType.FUNCTION;
+    }
+
+    @Override
     public VarArg run(LuaState state, VarArg args) {
         checkIsAlive();
         int top = LuaNatives.getTop(state.ptr);

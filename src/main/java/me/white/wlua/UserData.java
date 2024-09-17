@@ -27,6 +27,11 @@ public abstract non-sealed class UserData extends LuaValue {
     }
 
     @Override
+    public final ValueType getType() {
+        return ValueType.USERDATA;
+    }
+
+    @Override
     final void push(LuaState state) {
         FieldData fieldData = getFieldData(getClass());
         LuaNatives.newUserData(state.ptr, this);

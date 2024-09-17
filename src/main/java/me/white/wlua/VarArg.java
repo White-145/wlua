@@ -50,6 +50,15 @@ public class VarArg {
         return this;
     }
 
+    public boolean validate(ValueType ...types) {
+        for (int i = 0; i < values.length; ++i) {
+            if (values[i].getType() != types[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     static VarArg collect(LuaState state, int amount) {
         LuaValue[] values = new LuaValue[amount];
         for (int i = 0; i < amount; ++i) {

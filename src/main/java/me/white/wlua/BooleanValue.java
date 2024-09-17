@@ -12,6 +12,11 @@ public final class BooleanValue extends LuaValue {
     }
 
     @Override
+    public ValueType getType() {
+        return ValueType.BOOLEAN;
+    }
+
+    @Override
     void push(LuaState state) {
         state.checkIsAlive();
         LuaNatives.pushBoolean(state.ptr, value);

@@ -139,6 +139,11 @@ public final class TableRefValue extends LuaValue.Ref implements TableValue {
         return new TableSet();
     }
 
+    @Override
+    public ValueType getType() {
+        return ValueType.TABLE;
+    }
+
     private class TableSet extends AbstractSet<Entry<LuaValue, LuaValue>> {
         @Override
         public Iterator<Entry<LuaValue, LuaValue>> iterator() {

@@ -8,39 +8,11 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
 
     static LuaValue from(LuaState state, int index) {
         state.checkIsAlive();
-        int type = LuaNatives.getType(state.ptr, index);
-        if (type == LuaConsts.TYPE_NONE || type == LuaConsts.TYPE_NIL) {
-            return nil();
+        ValueType valueType = ValueType.fromId(LuaNatives.getType(state.ptr, index));
+        if (valueType == null) {
+            return fail();
         }
-        if (type == LuaConsts.TYPE_BOOLEAN) {
-            return of(LuaNatives.toBoolean(state.ptr, index));
-        }
-        if (type == LuaConsts.TYPE_NUMBER) {
-            if (LuaNatives.isInteger(state.ptr, index)) {
-                return of(LuaNatives.toInteger(state.ptr, index));
-            }
-            return of(LuaNatives.toNumber(state.ptr, index));
-        }
-        if (type == LuaConsts.TYPE_STRING) {
-            return of(LuaNatives.toString(state.ptr, index));
-        }
-        if (type == LuaConsts.TYPE_TABLE) {
-            return new TableRefValue(state, index);
-        }
-        if (type == LuaConsts.TYPE_FUNCTION) {
-            return new FunctionRefValue(state, index);
-        }
-        if (type == LuaConsts.TYPE_THREAD) {
-            return LuaInstances.get(LuaNatives.getThreadId(state.ptr, index));
-        }
-        if (type == LuaConsts.TYPE_USER_DATA || type == LuaConsts.TYPE_LIGHT_USER_DATA) {
-            Object userdata = LuaNatives.getUserData(state.ptr, index);
-            if (!(userdata instanceof UserData)) {
-                throw new IllegalStateException("Could not get userdata value.");
-            }
-            return (UserData)userdata;
-        }
-        return fail();
+        return valueType.fromStack(state, index);
     }
 
     public static BooleanValue of(boolean value) {
@@ -100,9 +72,11 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
         return true;
     }
 
+    public abstract ValueType getType();
+
     abstract void push(LuaState state);
 
-    public static sealed class Ref extends LuaValue permits FunctionRefValue, TableRefValue {
+    public static sealed abstract class Ref extends LuaValue permits FunctionRefValue, TableRefValue {
         private final Cleaner.Cleanable cleanable;
         private final CleanableRef cleanableRef;
         protected final LuaState state;
@@ -168,12 +142,7 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
 
             @Override
             public void run() {
-                synchronized (state.LOCK) {
-                    if (!state.isClosed() && state.aliveReferences.contains(reference)) {
-                        LuaNatives.deleteRef(state.ptr, reference);
-                        state.aliveReferences.remove(reference);
-                    }
-                }
+                state.cleanReference(reference);
             }
         }
     }

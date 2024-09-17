@@ -15,6 +15,11 @@ public final class StringValue extends LuaValue {
     }
 
     @Override
+    public ValueType getType() {
+        return ValueType.STRING;
+    }
+
+    @Override
     void push(LuaState state) {
         state.checkIsAlive();
         LuaNatives.pushString(state.ptr, value);

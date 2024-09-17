@@ -12,6 +12,11 @@ public sealed class NumberValue extends LuaValue permits IntegerValue {
     }
 
     @Override
+    public ValueType getType() {
+        return ValueType.NUMBER;
+    }
+
+    @Override
     void push(LuaState state) {
         state.checkIsAlive();
         LuaNatives.pushNumber(state.ptr, value);
