@@ -72,11 +72,11 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
         return true;
     }
 
-    public long getInteger() {
+    public double getNumber() {
         throw new UnsupportedOperationException();
     }
 
-    public double getNumber() {
+    public long getInteger() {
         throw new UnsupportedOperationException();
     }
 

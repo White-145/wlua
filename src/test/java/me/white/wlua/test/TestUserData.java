@@ -18,7 +18,7 @@ public class TestUserData extends UserData {
     @LuaFunction("foo")
     public VarArg foo(LuaState state, VarArg args) {
         if (args.get(0) instanceof NumberValue) {
-            return new VarArg(new NumberValue(99 + ((NumberValue)args.get(0)).getNumber()));
+            return new VarArg(LuaValue.of(99 + args.get(0).getNumber()));
         }
         return new VarArg(LuaValue.of(99));
     }
@@ -28,7 +28,7 @@ public class TestUserData extends UserData {
         if (!(value instanceof NumberValue)) {
             return LuaValue.nil();
         }
-        return new NumberValue(((NumberValue)value).getNumber() * 2);
+        return new NumberValue(value.getNumber() * 2);
     }
 
     @LuaMetaMethod(MetaMethodType.CALL)
@@ -36,10 +36,10 @@ public class TestUserData extends UserData {
         VarArg args = (VarArg)args1;
         double sum = 0;
         if (args.get(0) instanceof NumberValue) {
-            sum += ((NumberValue)args.get(0)).getNumber();
+            sum += args.get(0).getNumber();
         }
         if (args.get(1) instanceof NumberValue) {
-            sum += ((NumberValue)args.get(1)).getNumber();
+            sum += args.get(1).getNumber();
         }
         return new VarArg(LuaValue.of(sum));
     }
@@ -52,7 +52,7 @@ public class TestUserData extends UserData {
     @LuaAccessor("bar")
     public LuaValue getBar(LuaState state) {
         if (bar instanceof NumberValue) {
-            return new NumberValue(((NumberValue)bar).getNumber() * 2);
+            return new NumberValue(bar.getNumber() * 2);
         }
         return bar;
     }
@@ -64,7 +64,7 @@ public class TestUserData extends UserData {
 
     @LuaMetaMethod(MetaMethodType.INDEX)
     public LuaValue index(LuaState state, LuaValue key) {
-        if (!key.equals(LuaValue.of("qux"))) {
+        if (!key.getString().equals("qux")) {
             return null;
         }
         return qux;
@@ -72,7 +72,7 @@ public class TestUserData extends UserData {
 
     @LuaMetaMethod(MetaMethodType.NEW_INDEX)
     public void newIndex(LuaState state, LuaValue key, LuaValue value) {
-        if (!key.equals(LuaValue.of("qux"))) {
+        if (!key.getString().equals("qux")) {
             return;
         }
         qux = value;
