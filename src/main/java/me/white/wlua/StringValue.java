@@ -10,6 +10,7 @@ public final class StringValue extends LuaValue {
         this.value = value;
     }
 
+    @Override
     public String getString() {
         return value;
     }

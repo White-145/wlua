@@ -2,6 +2,16 @@ package me.white.wlua;
 
 public sealed class NilValue extends LuaValue permits FailValue {
     @Override
+    public boolean isNil() {
+        return true;
+    }
+
+    @Override
+    public boolean getBoolean() {
+        return false;
+    }
+
+    @Override
     public ValueType getType() {
         return ValueType.NIL;
     }
@@ -9,16 +19,6 @@ public sealed class NilValue extends LuaValue permits FailValue {
     @Override
     void push(LuaState state) {
         LuaNatives.pushNil(state.ptr);
-    }
-
-    @Override
-    public boolean isNil() {
-        return true;
-    }
-
-    @Override
-    public boolean isTrue() {
-        return false;
     }
 
     @Override

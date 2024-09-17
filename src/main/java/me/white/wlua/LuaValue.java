@@ -68,8 +68,20 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
         return false;
     }
 
-    public boolean isTrue() {
+    public boolean getBoolean() {
         return true;
+    }
+
+    public long getInteger() {
+        throw new UnsupportedOperationException();
+    }
+
+    public double getNumber() {
+        throw new UnsupportedOperationException();
+    }
+
+    public String getString() {
+        return toString();
     }
 
     public abstract ValueType getType();

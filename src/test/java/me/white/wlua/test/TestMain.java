@@ -37,25 +37,25 @@ public class TestMain {
             state.setGlobal("value", bool);
             LuaValue value = state.getGlobal("value");
             assert value.equals(bool);
-            assert ((BooleanValue)value).getBoolean();
+            assert value.getBoolean();
 
             IntegerValue integer = LuaValue.of(21);
             state.setGlobal("value", integer);
             value = state.getGlobal("value");
             assert value.equals(integer);
-            assert ((IntegerValue)value).getInteger() == 21;
+            assert value.getInteger() == 21;
 
             NumberValue number = LuaValue.of(182.4);
             state.setGlobal("value", number);
             value = state.getGlobal("value");
             assert value.equals(number);
-            assert ((NumberValue)value).getNumber() == 182.4;
+            assert value.getNumber() == 182.4;
 
             StringValue str = LuaValue.of("test string");
             state.setGlobal("value", str);
             value = state.getGlobal("value");
             assert value.equals(str);
-            assert ((StringValue)value).getString().equals("test string");
+            assert value.getString().equals("test string");
 
             NilValue nil = LuaValue.of();
             state.setGlobal("value", nil);
@@ -115,14 +115,14 @@ public class TestMain {
             VarArg ret = func.run(state, new VarArg(LuaValue.of("string"), LuaValue.nil()));
             assert ret.size() == 2;
             LuaValue retValue = ret.get(0);
-            assert retValue instanceof StringValue && ((StringValue)retValue).getString().equals("string");
+            assert retValue instanceof StringValue && retValue.getString().equals("string");
             state.setGlobal("value", func);
             LuaValue value = state.getGlobal("value");
             assert value instanceof FunctionRefValue;
             ret = ((FunctionRefValue)value).run(state, new VarArg(LuaValue.of("string"), LuaValue.nil()));
             assert ret.size() == 2;
             retValue = ret.get(0);
-            assert retValue instanceof StringValue && ((StringValue)retValue).getString().equals("string");
+            assert retValue instanceof StringValue && retValue.getString().equals("string");
         }
     }
 

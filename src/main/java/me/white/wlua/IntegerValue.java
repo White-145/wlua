@@ -12,6 +12,7 @@ public final class IntegerValue extends NumberValue {
         this((long)value);
     }
 
+    @Override
     public long getInteger() {
         return value;
     }

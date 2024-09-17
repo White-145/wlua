@@ -7,6 +7,12 @@ public sealed class NumberValue extends LuaValue permits IntegerValue {
         this.value = value;
     }
 
+    @Override
+    public long getInteger() {
+        return (long)value;
+    }
+
+    @Override
     public double getNumber() {
         return value;
     }

@@ -7,6 +7,7 @@ public final class BooleanValue extends LuaValue {
         this.value = value;
     }
 
+    @Override
     public boolean getBoolean() {
         return value;
     }
@@ -20,11 +21,6 @@ public final class BooleanValue extends LuaValue {
     void push(LuaState state) {
         state.checkIsAlive();
         LuaNatives.pushBoolean(state.ptr, value);
-    }
-
-    @Override
-    public boolean isTrue() {
-        return value;
     }
 
     @Override
