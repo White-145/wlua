@@ -15,32 +15,28 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
         return valueType.fromStack(state, index);
     }
 
-    public static BooleanValue of(boolean value) {
+    public static BooleanValue valueOf(boolean value) {
         return new BooleanValue(value);
     }
 
-    public static IntegerValue of(long value) {
+    public static IntegerValue valueOf(long value) {
         return new IntegerValue(value);
     }
 
-    public static NumberValue of(double value) {
+    public static NumberValue valueOf(double value) {
         return new NumberValue(value);
     }
 
-    public static StringValue of(String value) {
+    public static StringValue valueOf(String value) {
         return new StringValue(value);
     }
 
-    public static FunctionLiteralValue of(FunctionLiteralValue.Function value) {
+    public static FunctionLiteralValue valueOf(FunctionLiteralValue.Function value) {
         return new FunctionLiteralValue(value);
     }
 
-    public static TableLiteralValue of(Map<LuaValue, LuaValue> value) {
+    public static TableLiteralValue valueOf(Map<LuaValue, LuaValue> value) {
         return new TableLiteralValue(value);
-    }
-
-    public static NilValue of() {
-        return nil();
     }
 
     public static NilValue nil() {

@@ -141,7 +141,7 @@ class LuaNatives {
         }
         state.pop(2);
         if (key instanceof StringValue) {
-            String name = ((StringValue)key).getString();
+            String name = key.getString();
             if (fieldData.readFields.containsKey(name)) {
                 Field field = fieldData.readFields.get(name);
                 Object results;
@@ -156,7 +156,7 @@ class LuaNatives {
             }
             if (fieldData.functions.containsKey(name)) {
                 Method method = fieldData.functions.get(name);
-                LuaValue.of((lua, args) -> {
+                LuaValue.valueOf((lua, args) -> {
                     Object results;
                     try {
                         results = method.invoke(userdata, lua, args);
@@ -217,7 +217,7 @@ class LuaNatives {
         LuaValue value = LuaValue.from(state, -1);
         state.pop(3);
         if (key instanceof StringValue) {
-            String name = ((StringValue)key).getString();
+            String name = key.getString();
             if (fieldData.writeFields.containsKey(name)) {
                 Field field = fieldData.writeFields.get(name);
                 if (Modifier.isFinal(field.getModifiers())) {

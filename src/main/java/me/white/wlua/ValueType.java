@@ -1,19 +1,19 @@
 package me.white.wlua;
 
 public enum ValueType {
-    NIL(LuaConsts.TYPE_NIL) {
+    NIL(LuaConsts.TYPE_NIL, NilValue.class) {
         @Override
         LuaValue fromStack(LuaState state, int index) {
             return new NilValue();
         }
     },
-    BOOLEAN(LuaConsts.TYPE_BOOLEAN) {
+    BOOLEAN(LuaConsts.TYPE_BOOLEAN, BooleanValue.class) {
         @Override
         LuaValue fromStack(LuaState state, int index) {
             return new BooleanValue(LuaNatives.toBoolean(state.ptr, index));
         }
     },
-    NUMBER(LuaConsts.TYPE_NUMBER) {
+    NUMBER(LuaConsts.TYPE_NUMBER, NumberValue.class) {
         @Override
         LuaValue fromStack(LuaState state, int index) {
             if (LuaNatives.isInteger(state.ptr, index)) {
@@ -22,25 +22,25 @@ public enum ValueType {
             return new NumberValue(LuaNatives.toNumber(state.ptr, index));
         }
     },
-    STRING(LuaConsts.TYPE_STRING) {
+    STRING(LuaConsts.TYPE_STRING, StringValue.class) {
         @Override
         LuaValue fromStack(LuaState state, int index) {
             return new StringValue(LuaNatives.toString(state.ptr, index));
         }
     },
-    TABLE(LuaConsts.TYPE_TABLE) {
+    TABLE(LuaConsts.TYPE_TABLE, TableValue.class) {
         @Override
         LuaValue fromStack(LuaState state, int index) {
             return new TableRefValue(state, index);
         }
     },
-    FUNCTION(LuaConsts.TYPE_FUNCTION) {
+    FUNCTION(LuaConsts.TYPE_FUNCTION, FunctionValue.class) {
         @Override
         LuaValue fromStack(LuaState state, int index) {
             return new FunctionRefValue(state, index);
         }
     },
-    USERDATA(LuaConsts.TYPE_USER_DATA) {
+    USERDATA(LuaConsts.TYPE_USER_DATA, UserData.class) {
         @Override
         LuaValue fromStack(LuaState state, int index) {
             Object userdata = LuaNatives.getUserData(state.ptr, index);
@@ -50,7 +50,7 @@ public enum ValueType {
             return (UserData)userdata;
         }
     },
-    THREAD(LuaConsts.TYPE_THREAD) {
+    THREAD(LuaConsts.TYPE_THREAD, LuaState.class) {
         @Override
         LuaValue fromStack(LuaState state, int index) {
             return LuaInstances.get(LuaNatives.getThreadId(state.ptr, index));
@@ -58,9 +58,11 @@ public enum ValueType {
     };
 
     final int id;
+    final Class<?> clazz;
 
-    ValueType(int id) {
+    ValueType(int id, Class<?> clazz) {
         this.id = id;
+        this.clazz = clazz;
     }
 
     static ValueType fromId(int id) {
@@ -74,5 +76,14 @@ public enum ValueType {
 
     LuaValue fromStack(LuaState state, int index) {
         throw new UnsupportedOperationException();
+    }
+
+    public static ValueType fromClass(Class<?> clazz) {
+        for (ValueType type : ValueType.values()) {
+            if (type.clazz.isAssignableFrom(clazz)) {
+                return type;
+            }
+        }
+        return null;
     }
 }

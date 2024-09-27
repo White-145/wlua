@@ -19,7 +19,7 @@ public class LuaException extends RuntimeException {
         } else if (code == LuaConsts.ERR_ERR) {
             name = "Error";
         }
-        String msg = ((StringValue)LuaValue.from(state, -1)).getString();
+        String msg = LuaValue.from(state, -1).getString();
         state.pop(1);
         throw new LuaException(name + ": " + msg);
     }

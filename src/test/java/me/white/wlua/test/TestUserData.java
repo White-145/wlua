@@ -4,23 +4,23 @@ import me.white.wlua.*;
 
 public class TestUserData extends UserData {
     private LuaValue qux = LuaValue.nil();
-    public LuaValue bar = LuaValue.of("baz");
+    public LuaValue bar = LuaValue.valueOf("baz");
 
     @LuaField("spam")
-    public LuaValue spam = LuaValue.of(8);
+    public LuaValue spam = LuaValue.valueOf(8);
 
     @LuaField(value = "bacon", type = FieldType.READ_ONLY)
-    public LuaValue bacon = LuaValue.of(42);
+    public LuaValue bacon = LuaValue.valueOf(42);
 
     @LuaField(value = "eggs", type = FieldType.WRITE_ONLY)
-    public LuaValue eggs = LuaValue.of(-1);
+    public LuaValue eggs = LuaValue.valueOf(-1);
 
     @LuaFunction("foo")
     public VarArg foo(LuaState state, VarArg args) {
         if (args.get(0) instanceof NumberValue) {
-            return new VarArg(LuaValue.of(99 + args.get(0).getNumber()));
+            return new VarArg(LuaValue.valueOf(99 + args.get(0).getNumber()));
         }
-        return new VarArg(LuaValue.of(99));
+        return new VarArg(LuaValue.valueOf(99));
     }
 
     @LuaMetaMethod(MetaMethodType.ADD)
@@ -41,12 +41,12 @@ public class TestUserData extends UserData {
         if (args.get(1) instanceof NumberValue) {
             sum += args.get(1).getNumber();
         }
-        return new VarArg(LuaValue.of(sum));
+        return new VarArg(LuaValue.valueOf(sum));
     }
 
     @LuaMetaMethod(MetaMethodType.LENGTH)
     public StringValue length(LuaState state) {
-        return LuaValue.of("length");
+        return LuaValue.valueOf("length");
     }
 
     @LuaAccessor("bar")

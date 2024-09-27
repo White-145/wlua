@@ -22,10 +22,7 @@ public class VarArg {
     }
 
     public LuaValue get(int i) {
-        if (i < 0) {
-            i += values.length;
-        }
-        if (i >= values.length || i < 0) {
+        if (i < 0 || i >= values.length) {
             return LuaValue.nil();
         }
         return values[i];
@@ -48,15 +45,6 @@ public class VarArg {
         }
         values = newValues;
         return this;
-    }
-
-    public boolean validate(ValueType ...types) {
-        for (int i = 0; i < values.length; ++i) {
-            if (values[i].getType() != types[i]) {
-                return false;
-            }
-        }
-        return true;
     }
 
     static VarArg collect(LuaState state, int amount) {

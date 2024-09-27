@@ -27,9 +27,4 @@ public final class IntegerValue extends NumberValue {
     public String toString() {
         return String.valueOf(value);
     }
-
-    @Override
-    public int hashCode() {
-        return (int)value;
-    }
 }
