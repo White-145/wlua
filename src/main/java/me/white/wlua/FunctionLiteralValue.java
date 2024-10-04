@@ -26,5 +26,4 @@ public final class FunctionLiteralValue extends LuaValue implements FunctionValu
         state.checkIsAlive();
         return function.run(state, args);
     }
-
 }

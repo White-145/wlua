@@ -3,13 +3,29 @@ package me.white.wlua;
 import java.util.*;
 
 public final class TableRefValue extends LuaValue.Ref implements TableValue {
+    private final ListRefValue list;
+
     TableRefValue(LuaState state, int index) {
         super(state, index);
+        list = new ListRefValue(this);
     }
 
-    public TableLiteralValue copy() {
+    public TableLiteralValue toLiteral() {
         checkIsAlive();
-        return new TableLiteralValue(this);
+        Map<LuaValue, LuaValue> map = new HashMap<>();
+        state.pushValue(this);
+        state.pushNil();
+        while (LuaNatives.tableNext(state.ptr)) {
+            map.put(LuaValue.from(state, -2), LuaValue.from(state, -1));
+            state.pop(1);
+        }
+        state.pop(1);
+        return new TableLiteralValue(map);
+    }
+
+    @Override
+    public ListRefValue getList() {
+        return list;
     }
 
     @Override
@@ -59,7 +75,7 @@ public final class TableRefValue extends LuaValue.Ref implements TableValue {
         LuaNatives.tableGet(state.ptr);
         LuaValue returnValue = LuaValue.from(state, -1);
         state.pop(2);
-        return returnValue;
+        return LuaValue.isNil(returnValue) ? null : returnValue;
     }
 
     @Override
@@ -74,7 +90,7 @@ public final class TableRefValue extends LuaValue.Ref implements TableValue {
         state.pushValue(value);
         LuaNatives.tableSet(state.ptr);
         state.pop(1);
-        return returnValue instanceof NilValue ? null : returnValue;
+        return LuaValue.isNil(returnValue) ? null : returnValue;
     }
 
     @Override
@@ -110,7 +126,7 @@ public final class TableRefValue extends LuaValue.Ref implements TableValue {
         checkIsAlive();
         Set<LuaValue> keys = new HashSet<>();
         state.pushValue(this);
-        state.pushValue(LuaValue.nil());
+        state.pushNil();
         while (LuaNatives.tableNext(state.ptr)) {
             state.pop(1);
             keys.add(LuaValue.from(state, -1));
@@ -124,7 +140,7 @@ public final class TableRefValue extends LuaValue.Ref implements TableValue {
         checkIsAlive();
         Set<LuaValue> values = new HashSet<>();
         state.pushValue(this);
-        state.pushValue(LuaValue.nil());
+        state.pushNil();
         while (LuaNatives.tableNext(state.ptr)) {
             values.add(LuaValue.from(state, -1));
             state.pop(1);
@@ -189,7 +205,7 @@ public final class TableRefValue extends LuaValue.Ref implements TableValue {
         @Override
         public void remove() {
             checkIsAlive();
-            if (key instanceof NilValue) {
+            if (LuaValue.isNil(key)) {
                 throw new IllegalStateException();
             }
             state.pushValue(TableRefValue.this);

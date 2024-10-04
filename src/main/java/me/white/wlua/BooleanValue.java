@@ -19,7 +19,6 @@ public final class BooleanValue extends LuaValue {
 
     @Override
     void push(LuaState state) {
-        state.checkIsAlive();
         LuaNatives.pushBoolean(state.ptr, value);
     }
 

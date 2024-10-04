@@ -1,12 +1,17 @@
 package me.white.wlua;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
-public non-sealed class TableLiteralValue extends LuaValue implements TableValue {
-    protected final Map<LuaValue, LuaValue> map;
+public final class TableLiteralValue extends LuaValue implements TableValue {
+    private final Map<LuaValue, LuaValue> map;
+    private final ListValue list;
 
     public TableLiteralValue(Map<LuaValue, LuaValue> map) {
-        this.map = new HashMap<>(map);
+        this.map = map;
+        list = new ListLiteralValue(this);
     }
 
     public TableLiteralValue() {
@@ -14,10 +19,16 @@ public non-sealed class TableLiteralValue extends LuaValue implements TableValue
     }
 
     public TableRefValue toReference(LuaState state) {
-        push(state);
+        state.checkIsAlive();
+        state.pushValue(this);
         TableRefValue ref = new TableRefValue(state, -1);
         state.pop(1);
         return ref;
+    }
+
+    @Override
+    public ListValue getList() {
+        return null;
     }
 
     @Override
@@ -47,7 +58,7 @@ public non-sealed class TableLiteralValue extends LuaValue implements TableValue
 
     @Override
     public LuaValue put(LuaValue key, LuaValue value) {
-        if (value instanceof NilValue) {
+        if (LuaValue.isNil(value)) {
             return map.remove(key);
         }
         return map.put(key, value);
@@ -84,12 +95,12 @@ public non-sealed class TableLiteralValue extends LuaValue implements TableValue
     }
 
     @Override
-    public final ValueType getType() {
+    public ValueType getType() {
         return ValueType.TABLE;
     }
 
     @Override
-    final void push(LuaState state) {
+    void push(LuaState state) {
         LuaNatives.newTable(state.ptr, size());
         for (Entry<LuaValue, LuaValue> entry : entrySet()) {
             state.pushValue(entry.getKey());

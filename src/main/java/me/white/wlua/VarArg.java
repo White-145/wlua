@@ -6,15 +6,31 @@ public class VarArg {
     private LuaValue[] values;
 
     public VarArg(LuaValue ...values) {
-        this.values = values;
+        int lastI = 0;
+        for (int i = 0; i < values.length; ++i) {
+            if (values[i] == null) {
+                values[i] = LuaValue.nil();
+            } else if (!values[i].isNil()) {
+                lastI = i;
+            }
+        }
+        this.values = lastI == values.length - 1 ? values : conform(values, lastI + 1);
     }
 
     public VarArg(Collection<LuaValue> values) {
         this(values.toArray(new LuaValue[0]));
     }
 
-    public static VarArg of(LuaValue ... values) {
-        return new VarArg(values);
+    public static LuaValue[] conform(LuaValue[] values, int size) {
+        if (size == values.length) {
+            return values;
+        }
+        LuaValue[] conformed = new LuaValue[size];
+        System.arraycopy(values, 0, conformed, 0, Math.min(size, values.length));
+        for (int i = values.length; i < size; ++i) {
+            conformed[i] = LuaValue.nil();
+        }
+        return conformed;
     }
 
     public LuaValue[] getValues() {
@@ -30,21 +46,6 @@ public class VarArg {
 
     public int size() {
         return values.length;
-    }
-
-    public VarArg conform(int size) {
-        if (size == values.length) {
-            return this;
-        }
-        LuaValue[] newValues = new LuaValue[size];
-        System.arraycopy(values, 0, newValues, 0, Math.min(size, values.length));
-        if (values.length < size) {
-            for (int i = values.length; i < size; ++i) {
-                newValues[i] = LuaValue.nil();
-            }
-        }
-        values = newValues;
-        return this;
     }
 
     static VarArg collect(LuaState state, int amount) {

@@ -42,6 +42,13 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
         }
     }
 
+    void pushNil() {
+        synchronized (LOCK) {
+            checkIsAlive();
+            LuaNatives.pushNil(ptr);
+        }
+    }
+
     void cleanReference(int reference) {
         synchronized (LOCK) {
             if (!isClosed() && aliveReferences.contains(reference)) {
@@ -58,14 +65,14 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
     }
 
     public boolean isSubThread(LuaState thread) {
-        return thread == this || subThreads.contains(thread);
+        return !isClosed() && (thread == this || subThreads.contains(thread));
     }
 
     public LuaState subThread() {
         synchronized (LOCK) {
             checkIsAlive();
             long threadPtr = LuaNatives.newThread(ptr);
-            int threadId = LuaInstances.add((id) -> new LuaState(ptr, id, this));
+            int threadId = LuaInstances.add((id) -> new LuaState(threadPtr, id, this));
             return LuaInstances.get(threadId);
         }
     }
@@ -112,13 +119,20 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
 
     public VarArg run(String chunk) {
         synchronized (LOCK) {
-            return load(chunk).run(this, new VarArg());
+            return run(load(chunk), new VarArg());
         }
     }
 
     public VarArg run(FunctionValue chunk, VarArg args) {
         synchronized (LOCK) {
-            return chunk.run(this, args);
+            checkIsAlive();
+            int top = LuaNatives.getTop(ptr);
+            ((LuaValue)chunk).push(this);
+            args.push(this);
+            int code = LuaNatives.protectedCall(ptr, args.size(), LuaConsts.MULT_RET);
+            LuaException.checkError(code, this);
+            int amount = LuaNatives.getTop(ptr) - top;
+            return VarArg.collect(this, amount);
         }
     }
 
@@ -152,6 +166,7 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
             throw new IllegalStateException("Cannot yield non-yieldable state");
         }
         synchronized (LOCK) {
+            checkIsAlive();
             LuaNatives.yield(ptr);
             return result;
         }
@@ -162,11 +177,11 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
     }
 
     public boolean isYieldable() {
-        return LuaNatives.isYieldable(ptr);
+        return !isClosed() && LuaNatives.isYieldable(ptr);
     }
 
     public boolean isSuspended() {
-        return LuaNatives.isSuspended(ptr);
+        return !isClosed() && LuaNatives.isSuspended(ptr);
     }
 
     public boolean isClosed() {
@@ -181,7 +196,6 @@ public non-sealed class LuaState extends LuaValue implements AutoCloseable {
     @Override
     final void push(LuaState state) {
         synchronized (LOCK) {
-            state.checkIsAlive();
             if (state.mainThread.isSubThread(this)) {
                 throw new IllegalStateException("Could not push thread to the separate lua state.");
             }

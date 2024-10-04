@@ -40,7 +40,7 @@ public enum ValueType {
             return new FunctionRefValue(state, index);
         }
     },
-    USERDATA(LuaConsts.TYPE_USER_DATA, UserData.class) {
+    USER_DATA(LuaConsts.TYPE_USER_DATA, UserData.class) {
         @Override
         LuaValue fromStack(LuaState state, int index) {
             Object userdata = LuaNatives.getUserData(state.ptr, index);

@@ -78,7 +78,7 @@ public class TestMain {
             assert table.get(LuaValue.valueOf("evil value")).equals(state, LuaValue.valueOf(false));
             // setting a key to nil is just a fancy way of removing it
             table.put(LuaValue.valueOf("evil value"), LuaValue.nil());
-            assert table.get(LuaValue.valueOf("evil value")).equals(state, LuaValue.nil());
+            assert table.get(LuaValue.valueOf("evil value")) == null;
             assert table.size() == 1;
 
             HashMap<LuaValue, LuaValue> map = new HashMap<>();

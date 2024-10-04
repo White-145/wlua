@@ -18,7 +18,6 @@ public sealed class NilValue extends LuaValue permits FailValue {
 
     @Override
     void push(LuaState state) {
-        state.checkIsAlive();
         LuaNatives.pushNil(state.ptr);
     }
 

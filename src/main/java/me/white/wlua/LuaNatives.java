@@ -27,6 +27,9 @@ class LuaNatives {
     }
 
     private static int pushOrFail(LuaState state, Object result) {
+        if (result == null) {
+            return 0;
+        }
         if (result instanceof VarArg) {
             ((VarArg)result).push(state);
             return ((VarArg)result).size();
@@ -166,7 +169,10 @@ class LuaNatives {
                     if (results instanceof VarArg) {
                         return (VarArg)results;
                     }
-                    return new VarArg(LuaValue.fail());
+                    if (results instanceof LuaValue) {
+                        return new VarArg((LuaValue)results);
+                    }
+                    return new VarArg();
                 }).push(state);
                 return 1;
             }
@@ -409,8 +415,20 @@ class LuaNatives {
         check_yield(L, returns, 0);
         return return_or_error(env, L, returns);
     }
+
+    int list_next(lua_State* L, int index, int* i) {
+        int absindex = lua_absindex(L, index);
+        *i += 1;
+        lua_geti(L, absindex, *i);
+        if (lua_isnil(L, -1)) {
+            lua_pop(L, 1);
+            return 0;
+        }
+        return 1;
+    }
     */
 
+    // TODO remove this
     static native String LUA_COPYRIGHT(); /*
         return env->NewStringUTF(LUA_COPYRIGHT);
     */
@@ -842,7 +860,7 @@ class LuaNatives {
 
     static native void pushFail(long ptr); /*
         lua_State* L = (lua_State*)ptr;
-        lua_pushnil(L);
+        luaL_pushfail(L);
     */
 
     static native void newTable(long ptr, int size); /*
@@ -1077,5 +1095,302 @@ class LuaNatives {
         jlong thread_ptr = (jlong)lua_newthread(L);
         lua_pop(L, 1);
         return thread_ptr;
+    */
+
+    static native long length(long ptr, int index); /*
+        lua_State* L = (lua_State*)ptr;
+        return (jlong)lua_rawlen(L, index);
+    */
+
+    static native boolean listContains(long ptr); /*
+        lua_State* L = (lua_State*)ptr;
+        int i = 0;
+        while (list_next(L, -2, &i)) {
+            if (lua_compare(L, -1, -2, LUA_OPEQ)) {
+                lua_pop(L, 3);
+                return JNI_TRUE;
+            }
+            lua_pop(L, 1);
+        }
+        lua_pop(L, 3);
+        return JNI_FALSE;
+    */
+
+    static native boolean listAdd(long ptr); /*
+        lua_State* L = (lua_State*)ptr;
+        int i = 0;
+        while (list_next(L, -2, &i)) {
+            lua_pop(L, 1);
+        }
+        lua_seti(L, -2, i);
+        lua_pop(L, 1);
+        return JNI_TRUE;
+    */
+
+    static native boolean listRemove(long ptr); /*
+        lua_State* L = (lua_State*)ptr;
+        int hasChanged = 0;
+        int i = 0;
+        while (list_next(L, -2, &i)) {
+            if (lua_compare(L, -1, -2, LUA_OPEQ)) {
+                lua_pop(L, 2);
+                lua_pushnil(L);
+                lua_seti(L, -2, i);
+                hasChanged = 1;
+                break;
+            }
+            lua_pop(L, 1);
+        }
+        if (!hasChanged) {
+            lua_pop(L, 2);
+            return JNI_FALSE;
+        }
+        i += 1;
+        while (list_next(L, -1, &i)) {
+            lua_seti(L, -2, i - 1);
+        }
+        lua_pushnil(L);
+        lua_seti(L, -2, i);
+        lua_pop(L, 1);
+        return JNI_TRUE;
+    */
+
+    static native void listClear(long ptr); /*
+        lua_State* L = (lua_State*)ptr;
+        int i = 0;
+        while (list_next(L, -1, &i)) {
+            lua_pop(L, 1);
+            lua_pushnil(L);
+            lua_seti(L, -2, i);
+        }
+        lua_pop(L, 1);
+    */
+
+    static native void listGet(long ptr, int index); /*
+        lua_State* L = (lua_State*)ptr;
+        int i = 0;
+        while (list_next(L, -1, &i)) {
+            if (i == index) {
+                lua_copy(L, -1, -2);
+                lua_pop(L, 1);
+                return;
+            }
+            lua_pop(L, 1);
+        }
+        lua_pop(L, 1);
+        lua_pushnil(L);
+    */
+
+    static native void listSet(long ptr, int index); /*
+        lua_State* L = (lua_State*)ptr;
+        int i = 0;
+        while (list_next(L, -2, &i)) {
+            lua_pop(L, 1);
+            if (i == index) {
+                break;
+            }
+        }
+        if (i != index) {
+            lua_pop(L, 2);
+            lua_pushnil(L);
+            return;
+        }
+        lua_geti(L, -2, i);
+        lua_pushvalue(L, -2);
+        lua_seti(L, -3, i);
+        lua_copy(L, -1, -3);
+        lua_pop(L, 2);
+    */
+
+    static native void listAddIndex(long ptr, int index); /*
+        lua_State* L = (lua_State*)ptr;
+        int i = 0;
+        while (list_next(L, -2, &i)) {
+            lua_pop(L, 1);
+            if (i == index) {
+                break;
+            }
+        }
+        if (i != index) {
+            return;
+        }
+        while (list_next(L, -2, &i)) {
+            lua_pop(L, 1);
+        }
+        i -= 1;
+        while (i >= index) {
+            lua_geti(L, -2, i);
+            lua_seti(L, -2, i + 1);
+            i -= 1;
+        }
+        lua_seti(L, -2, i);
+        lua_pop(L, 1);
+    */
+
+    static native void listRemoveIndex(long ptr, int index); /*
+        lua_State* L = (lua_State*)ptr;
+        int i = 0;
+        while (list_next(L, -1, &i)) {
+            lua_pop(L, 1);
+            if (i == index) {
+                break;
+            }
+        }
+        if (i != index) {
+            return;
+        }
+        i += 1;
+        while (list_next(L, -1, &i)) {
+            lua_seti(L, -2, i - 1);
+        }
+        lua_pushnil(L);
+        lua_seti(L, -2, i);
+        lua_pop(L, 1);
+        return;
+    */
+
+    static native int listIndexOf(long ptr); /*
+        lua_State* L = (lua_State*)ptr;
+        int i = 0;
+        while (list_next(L, -2, &i)) {
+            if (lua_compare(L, -1, -2, LUA_OPEQ)) {
+                lua_pop(L, 3);
+                return i;
+            }
+            lua_pop(L, 1);
+        }
+        lua_pop(L, 2);
+        return -1;
+    */
+
+    static native int listLastIndexOf(long ptr); /*
+        lua_State* L = (lua_State*)ptr;
+        int lastI = -1;
+        int i = 0;
+        while (list_next(L, -2, &i)) {
+            if (lua_compare(L, -1, -2, LUA_OPEQ)) {
+                lastI = i;
+            }
+            lua_pop(L, 1);
+        }
+        lua_pop(L, 2);
+        return (jint)lastI;
+    */
+
+    static native boolean listContainsAll(long ptr, int amount); /*
+        lua_State* L = (lua_State*)ptr;
+        int i = 0;
+        while (list_next(L, -amount - 1, &i)) {
+            for (int j = 0; j < amount; ++j) {
+                if (lua_compare(L, -1, -j - 1, LUA_OPEQ)) {
+                    lua_remove(L, lua_absindex(L, -j - 1));
+                    amount -= 1;
+                    j -= 1;
+                }
+            }
+            lua_pop(L, 1);
+        }
+        lua_pop(L, amount + 1);
+        return JAVA_BOOLEAN(amount == 0);
+    */
+
+    static native boolean listAddAll(long ptr, int amount); /*
+        lua_State* L = (lua_State*)ptr;
+        int i = 0;
+        while (list_next(L, -amount - 1, &i)) {
+            lua_pop(L, 1);
+        }
+        for (int j = 0; j < amount; ++j) {
+            lua_seti(L, -amount - 1, i + amount - j);
+        }
+        lua_pop(L, 1);
+        return JAVA_BOOLEAN(amount != 0);
+    */
+
+    static native boolean listAddAll(long ptr, int index, int amount); /*
+        lua_State* L = (lua_State*)ptr;
+        int i = 0;
+        while (list_next(L, -amount - 1, &i)) {
+            lua_pop(L, 1);
+            if (i == index) {
+                break;
+            }
+        }
+        if (i != index) {
+            return false;
+        }
+        while (list_next(L, -amount - 1, &i)) {
+            lua_pop(L, 1);
+        }
+        i -= 1;
+        while (i >= index) {
+            lua_geti(L, -amount - 1, i);
+            lua_seti(L, -amount - 1, i + amount);
+            i -= 1;
+        }
+        for (int j = 0; j < amount; ++j) {
+            lua_seti(L, -amount + j - 1, i + amount - j);
+        }
+        lua_pop(L, 1);
+        return JAVA_BOOLEAN(amount != 0);
+    */
+
+    static native boolean listRemoveAll(long ptr, int amount); /*
+        lua_State* L = (lua_State*)ptr;
+        int hasChanged = 0;
+        int i = 0;
+        while (list_next(L, -amount - 1, &i)) {
+            for (int j = 0; j < amount; ++j) {
+                if (lua_compare(L, -1, -j - 1, LUA_OPEQ)) {
+                    lua_pushnil(L);
+                    lua_seti(L, -amount - 2, i);
+                    hasChanged = 1;
+                }
+            }
+            lua_pop(L, 1);
+        }
+        if (!hasChanged) {
+            return JNI_FALSE;
+        }
+        int lastI = 1;
+        for (int j = 1; j <= i; ++j) {
+            lua_geti(L, -amount - 1, j);
+            if (!lua_isnil(L, -1)) {
+                if (j != lastI) {
+                    lua_seti(L, -amount - 1, lastI);
+                } else {
+                    lua_pop(L, 1);
+                }
+                lastI += 1;
+            }
+        }
+        lua_pop(L, amount + 1);
+        return JNI_TRUE;
+    */
+
+    static native boolean listRetainAll(long ptr, int amount); /*
+        lua_State* L = (lua_State*)ptr;
+        int hasChanged = 0;
+        int i = 0;
+        while (list_next(L, -amount - 1, &i)) {
+            // TODO
+        }
+        if (!hasChanged) {
+            return JNI_FALSE;
+        }
+        int lastI = 1;
+        for (int j = 1; j <= i; ++j) {
+            lua_geti(L, -amount - 1, j);
+            if (!lua_isnil(L, -1)) {
+                if (j != lastI) {
+                    lua_seti(L, -amount - 1, lastI);
+                } else {
+                    lua_pop(L, 1);
+                }
+                lastI += 1;
+            }
+        }
+        lua_pop(L, amount + 1);
+        return JNI_TRUE;
     */
 }

@@ -13,9 +13,9 @@ class LuaInstances {
         return add((i) -> state);
     }
 
-    static int add(Function<Integer, LuaState> factory) {
+    static int add(Function<Integer, LuaState> provider) {
         int i = freeIndices.isEmpty() ? states.size() : freeIndices.removeFirst();
-        LuaState state = factory.apply(i);
+        LuaState state = provider.apply(i);
         if (i < states.size()) {
             states.set(i, state);
         } else {

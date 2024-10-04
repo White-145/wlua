@@ -3,7 +3,7 @@ package me.white.wlua;
 import java.lang.ref.Cleaner;
 import java.util.*;
 
-public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue, LuaState, LuaValue.Ref, NilValue, NumberValue, StringValue, TableLiteralValue, UserData {
+public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue, ListLiteralValue, ListRefValue, LuaState, LuaValue.Ref, NilValue, NumberValue, StringValue, TableLiteralValue, UserData {
     private static final Cleaner CLEANER = Cleaner.create();
 
     static LuaValue from(LuaState state, int index) {
@@ -39,6 +39,14 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
         return new TableLiteralValue(value);
     }
 
+    public static ListLiteralValue valueOf(List<LuaValue> value) {
+        return new ListLiteralValue(value);
+    }
+
+    public static IntegerValue ofIndex(int index) {
+        return new IntegerValue(index + 1);
+    }
+
     public static NilValue nil() {
         return new NilValue();
     }
@@ -54,6 +62,10 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
         boolean equals = LuaNatives.compareValues(state.ptr, -2, -1, LuaConsts.OP_EQ);
         state.pop(2);
         return equals;
+    }
+
+    public static boolean isNil(LuaValue value) {
+        return value == null || value.isNil();
     }
 
     public boolean equals(LuaState state, LuaValue other) {

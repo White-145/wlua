@@ -24,7 +24,6 @@ public sealed class NumberValue extends LuaValue permits IntegerValue {
 
     @Override
     void push(LuaState state) {
-        state.checkIsAlive();
         LuaNatives.pushNumber(state.ptr, value);
     }
 

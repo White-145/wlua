@@ -11,6 +11,16 @@ public final class StringValue extends LuaValue {
     }
 
     @Override
+    public double getNumber() {
+        return Double.parseDouble(value);
+    }
+
+    @Override
+    public long getInteger() {
+        return (long)Double.parseDouble(value);
+    }
+
+    @Override
     public String getString() {
         return value;
     }
@@ -22,7 +32,6 @@ public final class StringValue extends LuaValue {
 
     @Override
     void push(LuaState state) {
-        state.checkIsAlive();
         LuaNatives.pushString(state.ptr, value);
     }
 

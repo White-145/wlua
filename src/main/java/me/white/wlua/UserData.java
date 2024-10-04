@@ -28,7 +28,7 @@ public abstract non-sealed class UserData extends LuaValue {
 
     @Override
     public final ValueType getType() {
-        return ValueType.USERDATA;
+        return ValueType.USER_DATA;
     }
 
     @Override
