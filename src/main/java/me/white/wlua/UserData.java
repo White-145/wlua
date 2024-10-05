@@ -26,6 +26,37 @@ public abstract non-sealed class UserData extends LuaValue {
         fieldDatas.remove(clazz);
     }
 
+    // make LuaValue methods final so that they cannot be overriden by user
+    @Override
+    public final boolean isNil() {
+        return super.isNil();
+    }
+
+    @Override
+    public final boolean isNumber() {
+        return super.isNumber();
+    }
+
+    @Override
+    public final boolean getBoolean() {
+        return super.getBoolean();
+    }
+
+    @Override
+    public final double getNumber() {
+        return super.getNumber();
+    }
+
+    @Override
+    public final long getInteger() {
+        return super.getInteger();
+    }
+
+    @Override
+    public final String getString() {
+        return super.getString();
+    }
+
     @Override
     public final ValueType getType() {
         return ValueType.USER_DATA;

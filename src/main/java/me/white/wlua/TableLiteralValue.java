@@ -28,7 +28,7 @@ public final class TableLiteralValue extends LuaValue implements TableValue {
 
     @Override
     public ListValue getList() {
-        return null;
+        return list;
     }
 
     @Override
@@ -58,6 +58,9 @@ public final class TableLiteralValue extends LuaValue implements TableValue {
 
     @Override
     public LuaValue put(LuaValue key, LuaValue value) {
+        if (LuaValue.isNil(key)) {
+            return null;
+        }
         if (LuaValue.isNil(value)) {
             return map.remove(key);
         }
@@ -71,7 +74,9 @@ public final class TableLiteralValue extends LuaValue implements TableValue {
 
     @Override
     public void putAll(Map<? extends LuaValue, ? extends LuaValue> m) {
-        map.putAll(m);
+        for (Map.Entry<? extends LuaValue, ? extends LuaValue> entry : m.entrySet()) {
+            put(entry.getKey(), entry.getValue());
+        }
     }
 
     @Override

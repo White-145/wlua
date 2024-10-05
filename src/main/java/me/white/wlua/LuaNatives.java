@@ -9,6 +9,23 @@ import java.lang.reflect.Modifier;
 
 class LuaNatives {
     // @off
+    static final int MULTRET = -1;
+    static final int OK = 0;
+    static final int YIELD = 1;
+    static final int ERRRUN = 2;
+    static final int ERRSYNTAX = 3;
+    static final int ERRMEM = 4;
+    static final int ERRERR = 5;
+    static final int TNIL = 0;
+    static final int TBOOLEAN = 1;
+    static final int TNUMBER = 3;
+    static final int TSTRING = 4;
+    static final int TTABLE = 5;
+    static final int TFUNCTION = 6;
+    static final int TUSERDATA = 7;
+    static final int TTHREAD = 8;
+    static final int OPEQ = 0;
+
     static {
         new SharedLibraryLoader().load("wlua");
         if (!LuaNatives.initBindings()) {
@@ -26,16 +43,17 @@ class LuaNatives {
         return 1;
     }
 
-    private static int pushOrFail(LuaState state, Object result) {
-        if (result == null) {
-            return 0;
+    private static int pushOrFail(LuaState state, Object result, boolean allowNull) {
+        if (allowNull && result == null) {
+            LuaNatives.pushNil(state.ptr);
+            return 1;
         }
         if (result instanceof VarArg) {
             ((VarArg)result).push(state);
             return ((VarArg)result).size();
         }
         if (result instanceof LuaValue) {
-            ((LuaValue)result).push(state);
+            state.pushValue((LuaValue)result);
             return 1;
         }
         return fail(state.ptr);
@@ -66,7 +84,7 @@ class LuaNatives {
         } catch (LuaException e) {
             return error(callerPtr, e.getMessage());
         }
-        return pushOrFail(state, results);
+        return pushOrFail(state, results, false);
     }
 
     private static int invokeMeta(long callerPtr, int stateIndex, int metaMethodType) {
@@ -101,7 +119,7 @@ class LuaNatives {
             } catch (LuaException e) {
                 return error(callerPtr, e.getMessage());
             }
-            return pushOrFail(state, results);
+            return pushOrFail(state, results, method.getReturnType() == void.class);
         }
         if (type.doubleReference) {
             LuaNatives.remove(state.ptr, 1);
@@ -123,7 +141,7 @@ class LuaNatives {
         if (type.returns == 0) {
             return 0;
         }
-        return pushOrFail(state, results);
+        return pushOrFail(state, results, method.getReturnType() == void.class);
     }
 
     public static int index(long callerPtr, int stateIndex) {
@@ -155,11 +173,11 @@ class LuaNatives {
                 } catch (LuaException e) {
                     return error(callerPtr, e.getMessage());
                 }
-                return pushOrFail(state, results);
+                return pushOrFail(state, results, true);
             }
             if (fieldData.functions.containsKey(name)) {
                 Method method = fieldData.functions.get(name);
-                LuaValue.valueOf((lua, args) -> {
+                state.pushValue(LuaValue.valueOf((lua, args) -> {
                     Object results;
                     try {
                         results = method.invoke(userdata, lua, args);
@@ -173,7 +191,7 @@ class LuaNatives {
                         return new VarArg((LuaValue)results);
                     }
                     return new VarArg();
-                }).push(state);
+                }));
                 return 1;
             }
             if (fieldData.getters.containsKey(name)) {
@@ -186,7 +204,7 @@ class LuaNatives {
                 } catch (LuaException e) {
                     return error(callerPtr, e.getMessage());
                 }
-                return pushOrFail(state, results);
+                return pushOrFail(state, results, method.getReturnType() == void.class);
             }
         }
         if (fieldData.metaMethods.containsKey(MetaMethodType.INDEX)) {
@@ -199,7 +217,7 @@ class LuaNatives {
             } catch (LuaException e) {
                 return error(callerPtr, e.getMessage());
             }
-            return pushOrFail(state, results);
+            return pushOrFail(state, results, method.getReturnType() == void.class);
         }
         return 0;
     }
@@ -426,295 +444,6 @@ class LuaNatives {
         }
         return 1;
     }
-    */
-
-    // TODO remove this
-    static native String LUA_COPYRIGHT(); /*
-        return env->NewStringUTF(LUA_COPYRIGHT);
-    */
-
-    static native String LUA_AUTHORS(); /*
-        return env->NewStringUTF(LUA_AUTHORS);
-    */
-
-    static native String LUA_VERSION_MAJOR(); /*
-        return env->NewStringUTF(LUA_VERSION_MAJOR);
-    */
-
-    static native String LUA_VERSION_MINOR(); /*
-        return env->NewStringUTF(LUA_VERSION_MINOR);
-    */
-
-    static native String LUA_VERSION_RELEASE(); /*
-        return env->NewStringUTF(LUA_VERSION_RELEASE);
-    */
-
-    static native int LUA_VERSION_NUM(); /*
-        return (jint)LUA_VERSION_NUM;
-    */
-
-    static native int LUA_VERSION_RELEASE_NUM(); /*
-        return (jint)LUA_VERSION_RELEASE_NUM;
-    */
-
-    static native String LUA_SIGNATURE(); /*
-        return env->NewStringUTF(LUA_SIGNATURE);
-    */
-
-    static native int LUA_MULTRET(); /*
-        return (jint)LUA_MULTRET;
-    */
-
-    static native int LUA_REGISTRYINDEX(); /*
-        return (jint)LUA_REGISTRYINDEX;
-    */
-
-    static native int LUA_OK(); /*
-        return (jint)LUA_OK;
-    */
-
-    static native int LUA_YIELD(); /*
-        return (jint)LUA_YIELD;
-    */
-
-    static native int LUA_ERRRUN(); /*
-        return (jint)LUA_ERRRUN;
-    */
-
-    static native int LUA_ERRSYNTAX(); /*
-        return (jint)LUA_ERRSYNTAX;
-    */
-
-    static native int LUA_ERRMEM(); /*
-        return (jint)LUA_ERRMEM;
-    */
-
-    static native int LUA_ERRERR(); /*
-        return (jint)LUA_ERRERR;
-    */
-
-    static native int LUA_TNONE(); /*
-        return (jint)LUA_TNONE;
-    */
-
-    static native int LUA_TNIL(); /*
-        return (jint)LUA_TNIL;
-    */
-
-    static native int LUA_TBOOLEAN(); /*
-        return (jint)LUA_TBOOLEAN;
-    */
-
-    static native int LUA_TLIGHTUSERDATA(); /*
-        return (jint)LUA_TLIGHTUSERDATA;
-    */
-
-    static native int LUA_TNUMBER(); /*
-        return (jint)LUA_TNUMBER;
-    */
-
-    static native int LUA_TSTRING(); /*
-        return (jint)LUA_TSTRING;
-    */
-
-    static native int LUA_TTABLE(); /*
-        return (jint)LUA_TTABLE;
-    */
-
-    static native int LUA_TFUNCTION(); /*
-        return (jint)LUA_TFUNCTION;
-    */
-
-    static native int LUA_TUSERDATA(); /*
-        return (jint)LUA_TUSERDATA;
-    */
-
-    static native int LUA_TTHREAD(); /*
-        return (jint)LUA_TTHREAD;
-    */
-
-    static native int LUA_NUMTYPES(); /*
-        return (jint)LUA_NUMTYPES;
-    */
-
-    static native int LUA_MINSTACK(); /*
-        return (jint)LUA_MINSTACK;
-    */
-
-    static native int LUA_RIDX_GLOBALS(); /*
-        return (jint)LUA_RIDX_GLOBALS;
-    */
-
-    static native int LUA_RIDX_MAINTHREAD(); /*
-        return (jint)LUA_RIDX_MAINTHREAD;
-    */
-
-    static native int LUA_RIDX_LAST(); /*
-        return (jint)LUA_RIDX_LAST;
-    */
-
-    static native int LUA_OPADD(); /*
-        return (jint)LUA_OPADD;
-    */
-
-    static native int LUA_OPSUB(); /*
-        return (jint)LUA_OPSUB;
-    */
-
-    static native int LUA_OPMUL(); /*
-        return (jint)LUA_OPMUL;
-    */
-
-    static native int LUA_OPMOD(); /*
-        return (jint)LUA_OPMOD;
-    */
-
-    static native int LUA_OPPOW(); /*
-        return (jint)LUA_OPPOW;
-    */
-
-    static native int LUA_OPDIV(); /*
-        return (jint)LUA_OPDIV;
-    */
-
-    static native int LUA_OPIDIV(); /*
-        return (jint)LUA_OPIDIV;
-    */
-
-    static native int LUA_OPBAND(); /*
-        return (jint)LUA_OPBAND;
-    */
-
-    static native int LUA_OPBOR(); /*
-        return (jint)LUA_OPBOR;
-    */
-
-    static native int LUA_OPBXOR(); /*
-        return (jint)LUA_OPBXOR;
-    */
-
-    static native int LUA_OPSHL(); /*
-        return (jint)LUA_OPSHL;
-    */
-
-    static native int LUA_OPSHR(); /*
-        return (jint)LUA_OPSHR;
-    */
-
-    static native int LUA_OPUNM(); /*
-        return (jint)LUA_OPUNM;
-    */
-
-    static native int LUA_OPBNOT(); /*
-        return (jint)LUA_OPBNOT;
-    */
-
-    static native int LUA_OPEQ(); /*
-        return (jint)LUA_OPEQ;
-    */
-
-    static native int LUA_OPLT(); /*
-        return (jint)LUA_OPLT;
-    */
-
-    static native int LUA_OPLE(); /*
-        return (jint)LUA_OPLE;
-    */
-
-    static native int LUA_GCSTOP(); /*
-        return (jint)LUA_GCSTOP;
-    */
-
-    static native int LUA_GCRESTART(); /*
-        return (jint)LUA_GCRESTART;
-    */
-
-    static native int LUA_GCCOLLECT(); /*
-        return (jint)LUA_GCCOLLECT;
-    */
-
-    static native int LUA_GCCOUNT(); /*
-        return (jint)LUA_GCCOUNT;
-    */
-
-    static native int LUA_GCCOUNTB(); /*
-        return (jint)LUA_GCCOUNTB;
-    */
-
-    static native int LUA_GCSTEP(); /*
-        return (jint)LUA_GCSTEP;
-    */
-
-    static native int LUA_GCISRUNNING(); /*
-        return (jint)LUA_GCISRUNNING;
-    */
-
-    static native int LUA_GCGEN(); /*
-        return (jint)LUA_GCGEN;
-    */
-
-    static native int LUA_GCINC(); /*
-        return (jint)LUA_GCINC;
-    */
-
-    static native int LUA_HOOKCALL(); /*
-        return (jint)LUA_HOOKCALL;
-    */
-
-    static native int LUA_HOOKRET(); /*
-        return (jint)LUA_HOOKRET;
-    */
-
-    static native int LUA_HOOKLINE(); /*
-        return (jint)LUA_HOOKLINE;
-    */
-
-    static native int LUA_HOOKCOUNT(); /*
-        return (jint)LUA_HOOKCOUNT;
-    */
-
-    static native int LUA_HOOKTAILCALL(); /*
-        return (jint)LUA_HOOKTAILCALL;
-    */
-
-    static native int LUA_MASKCALL(); /*
-        return (jint)LUA_MASKCALL;
-    */
-
-    static native int LUA_MASKRET(); /*
-        return (jint)LUA_MASKRET;
-    */
-
-    static native int LUA_MASKLINE(); /*
-        return (jint)LUA_MASKLINE;
-    */
-
-    static native int LUA_MASKCOUNT(); /*
-        return (jint)LUA_MASKCOUNT;
-    */
-
-    static native String LUA_GNAME(); /*
-        return env->NewStringUTF(LUA_GNAME);
-    */
-
-    static native String LUA_LOADED_TABLE(); /*
-        return env->NewStringUTF(LUA_LOADED_TABLE);
-    */
-
-    static native String LUA_PRELOAD_TABLE(); /*
-        return env->NewStringUTF(LUA_PRELOAD_TABLE);
-    */
-
-    static native int LUA_NOREF(); /*
-        return (jint)LUA_NOREF;
-    */
-
-    static native int LUA_REFNIL(); /*
-        return (jint)LUA_REFNIL;
-    */
-
-    static native String LUA_FILEHANDLE(); /*
-        return env->NewStringUTF(LUA_FILEHANDLE);
     */
 
     static native long newState(); /*
@@ -1048,9 +777,9 @@ class LuaNatives {
         return (jint)luaL_loadbuffer(L, string, std::strlen(string), name);
     */
 
-    static native boolean compareValues(long ptr, int index1, int index2, int op); /*
+    static native boolean equal(long ptr, int index1, int index2); /*
         lua_State* L = (lua_State*)ptr;
-        return JAVA_BOOLEAN(lua_compare(L, index1, index2, op));
+        return JAVA_BOOLEAN(lua_compare(L, index1, index2, LUA_OPEQ));
     */
 
     static native int resume(long ptr, int args); /*
@@ -1373,7 +1102,18 @@ class LuaNatives {
         int hasChanged = 0;
         int i = 0;
         while (list_next(L, -amount - 1, &i)) {
-            // TODO
+            int contains = 0;
+            for (int j = 0; j < amount; ++j) {
+                if (lua_compare(L, -1, -j - 2, LUA_OPEQ)) {
+                    contains = 1;
+                    break;
+                }
+            }
+            lua_pop(L, 1);
+            if (!contains) {
+                lua_seti(L, -amount - 1, i);
+                hasChanged = 1;
+            }
         }
         if (!hasChanged) {
             return JNI_FALSE;

@@ -24,7 +24,7 @@ public final class TableRefValue extends LuaValue.Ref implements TableValue {
     }
 
     @Override
-    public ListRefValue getList() {
+    public ListValue getList() {
         return list;
     }
 

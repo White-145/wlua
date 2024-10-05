@@ -1,6 +1,10 @@
 package me.white.wlua;
 
 public sealed class NilValue extends LuaValue permits FailValue {
+    static final NilValue INSTANCE = new NilValue();
+
+    NilValue() { }
+
     @Override
     public boolean isNil() {
         return true;
@@ -31,11 +35,14 @@ public sealed class NilValue extends LuaValue permits FailValue {
         if (obj == this) {
             return true;
         }
-        return obj instanceof NilValue;
+        if (!(obj instanceof LuaValue)) {
+            return false;
+        }
+        return ((LuaValue)obj).isNil();
     }
 
     @Override
     public int hashCode() {
-        return -1;
+        return 0;
     }
 }

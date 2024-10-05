@@ -15,8 +15,8 @@ class ValidatorUtil {
         if (method.getParameterCount() < 1 || !method.getParameterTypes()[0].isAssignableFrom(LuaState.class)) {
             throw new IllegalStateException(what + " should take at least 1 parameter, with first parameter of type LuaState.");
         }
-        if (!VarArg.class.isAssignableFrom(method.getReturnType())) {
-            throw new IllegalStateException(what + " should return value of type VarArg.");
+        if (!VarArg.class.isAssignableFrom(method.getReturnType()) && !LuaValue.class.isAssignableFrom(method.getReturnType()) && method.getReturnType() != void.class) {
+            throw new IllegalStateException(what + " should return void or value of type VarArg or LuaValue.");
         }
         if (method.getParameterCount() != 2 || !method.getParameterTypes()[1].isAssignableFrom(VarArg.class)) {
             throw new IllegalStateException(what + " should take 1 value parameter of type VarArg.");
@@ -34,8 +34,8 @@ class ValidatorUtil {
         if (type.returns == 1 && !LuaValue.class.isAssignableFrom(method.getReturnType())) {
             throw new IllegalStateException(what + " should return value of type LuaValue.");
         }
-        if (type.returns == -1 && !VarArg.class.isAssignableFrom(method.getReturnType())) {
-            throw new IllegalStateException(what + " should return value of type VarArg.");
+        if (type.returns == -1 && !VarArg.class.isAssignableFrom(method.getReturnType()) && !LuaValue.class.isAssignableFrom(method.getReturnType()) && method.getReturnType() != void.class) {
+            throw new IllegalStateException(what + " should return void or value of type VarArg or LuaValue.");
         }
         if (type.parameters == 0 && method.getParameterCount() != 1) {
             throw new IllegalStateException(what + " should take 0 value parameters.");

@@ -40,6 +40,6 @@ public final class BooleanValue extends LuaValue {
 
     @Override
     public int hashCode() {
-        return value ? 1 : 0;
+        return Boolean.hashCode(value);
     }
 }

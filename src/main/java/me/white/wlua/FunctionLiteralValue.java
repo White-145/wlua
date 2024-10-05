@@ -10,6 +10,14 @@ public final class FunctionLiteralValue extends LuaValue implements FunctionValu
         this.function = function;
     }
 
+    public FunctionRefValue toReference(LuaState state) {
+        state.checkIsAlive();
+        state.pushValue(this);
+        FunctionRefValue ref = new FunctionRefValue(state, -1);
+        state.pop(1);
+        return ref;
+    }
+
     @Override
     public ValueType getType() {
         return ValueType.FUNCTION;
@@ -17,7 +25,6 @@ public final class FunctionLiteralValue extends LuaValue implements FunctionValu
 
     @Override
     void push(LuaState state) {
-        state.checkIsAlive();
         LuaNatives.pushFunction(state.ptr, function);
     }
 
@@ -25,5 +32,21 @@ public final class FunctionLiteralValue extends LuaValue implements FunctionValu
     public VarArg run(LuaState state, VarArg args) {
         state.checkIsAlive();
         return function.run(state, args);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (!(obj instanceof FunctionLiteralValue)) {
+            return false;
+        }
+        return function == ((FunctionLiteralValue)obj).function;
+    }
+
+    @Override
+    public int hashCode() {
+        return function.hashCode();
     }
 }

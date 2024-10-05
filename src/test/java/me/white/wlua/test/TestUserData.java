@@ -49,6 +49,11 @@ public class TestUserData extends UserData {
         return LuaValue.valueOf("length");
     }
 
+    @LuaMetaMethod(MetaMethodType.CLOSE)
+    public void close(LuaState state, LuaValue error) {
+
+    }
+
     @LuaAccessor("bar")
     public LuaValue getBar(LuaState state) {
         if (bar instanceof NumberValue) {

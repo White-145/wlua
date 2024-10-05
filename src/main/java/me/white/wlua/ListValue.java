@@ -2,6 +2,7 @@ package me.white.wlua;
 
 import java.util.List;
 
+// interface meant to unite literal and reference list values
 public sealed interface ListValue extends List<LuaValue> permits ListLiteralValue, ListRefValue {
     TableValue getTable();
 

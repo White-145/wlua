@@ -31,10 +31,10 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
 
     public ListRefValue toReference(LuaState state) {
         state.checkIsAlive();
-        state.pushValue(this);
-        LuaValue ref = LuaValue.from(state, -1);
+        state.pushValue(table);
+        TableRefValue ref = new TableRefValue(state, -1);
         state.pop(1);
-        return new ListRefValue((TableRefValue)ref);
+        return (ListRefValue)ref.getList();
     }
 
     @Override
@@ -89,6 +89,7 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
 
     @Override
     public Iterator<LuaValue> iterator() {
+        // TODO
         throw new UnsupportedOperationException();
     }
 
@@ -354,11 +355,13 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
 
     @Override
     public ListIterator<LuaValue> listIterator() {
+        // TODO
         throw new UnsupportedOperationException();
     }
 
     @Override
     public ListIterator<LuaValue> listIterator(int index) {
+        // TODO
         throw new UnsupportedOperationException();
     }
 
@@ -370,5 +373,21 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
     @Override
     void push(LuaState state) {
         table.push(state);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (!(obj instanceof List<?>)) {
+            return false;
+        }
+        return obj.equals(this);
+    }
+
+    @Override
+    public int hashCode() {
+        return table.hashCode();
     }
 }

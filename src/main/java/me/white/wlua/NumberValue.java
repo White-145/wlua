@@ -8,6 +8,11 @@ public sealed class NumberValue extends LuaValue permits IntegerValue {
     }
 
     @Override
+    public boolean isNumber() {
+        return true;
+    }
+
+    @Override
     public double getNumber() {
         return value;
     }
@@ -45,6 +50,6 @@ public sealed class NumberValue extends LuaValue permits IntegerValue {
 
     @Override
     public int hashCode() {
-        return (int)value;
+        return Double.hashCode(value);
     }
 }

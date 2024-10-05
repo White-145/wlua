@@ -11,6 +11,7 @@ import java.util.stream.LongStream;
 
 public class TestMain {
     public static void main(String[] args) {
+        // TODO rewrite all of tests to test literally everything
         testValues();
         testTable();
         testFunction();
@@ -178,9 +179,9 @@ public class TestMain {
     }
 
     private static void testConcurrencyRef() {
-        try (LuaState state = new LuaState()) {
-            UserData data = new TestUserData();
-            for (int j = 0; j < 1000; ++j) {
+        UserData data = new TestUserData();
+        for (int j = 0; j < 1000; ++j) {
+            try (LuaState state = new LuaState()) {
                 state.setGlobal("a", data);
                 state.run("a(123.456, 456.123)");
                 state.getGlobal("a");

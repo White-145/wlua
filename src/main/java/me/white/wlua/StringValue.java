@@ -11,6 +11,16 @@ public final class StringValue extends LuaValue {
     }
 
     @Override
+    public boolean isNumber() {
+        try {
+            Double.parseDouble(value);
+        } catch (NumberFormatException ignored) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
     public double getNumber() {
         return Double.parseDouble(value);
     }

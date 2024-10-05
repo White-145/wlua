@@ -49,6 +49,7 @@ public class VarArg {
     }
 
     static VarArg collect(LuaState state, int amount) {
+        state.checkIsAlive();
         LuaValue[] values = new LuaValue[amount];
         for (int i = 0; i < amount; ++i) {
             values[i] = LuaValue.from(state, i - amount);
@@ -58,8 +59,9 @@ public class VarArg {
     }
 
     void push(LuaState state) {
+        state.checkIsAlive();
         for (LuaValue value : values) {
-            value.push(state);
+            state.pushValue(value);
         }
     }
 }

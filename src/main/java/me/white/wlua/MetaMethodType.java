@@ -21,6 +21,8 @@ public enum MetaMethodType {
     LESS_THAN("__lt", 1, 1 , false),
     LESS_EQUAL("__le", 1, 1, false),
     CALL("__call", -1, -1, false),
+    CLOSE("__close", 0, 1, false),
+    TO_STRING("__tostring", 1, 0, false),
     INDEX(null, 1, 1, false),
     NEW_INDEX(null, 0, 2, false);
     // '__gc' and '__name' are used by c-java interface

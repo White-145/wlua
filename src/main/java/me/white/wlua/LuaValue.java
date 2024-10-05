@@ -7,12 +7,7 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
     private static final Cleaner CLEANER = Cleaner.create();
 
     static LuaValue from(LuaState state, int index) {
-        state.checkIsAlive();
-        ValueType valueType = ValueType.fromId(LuaNatives.getType(state.ptr, index));
-        if (valueType == null) {
-            return fail();
-        }
-        return valueType.fromStack(state, index);
+        return state.fromStack(index);
     }
 
     public static BooleanValue valueOf(boolean value) {
@@ -48,18 +43,18 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
     }
 
     public static NilValue nil() {
-        return new NilValue();
+        return NilValue.INSTANCE;
     }
 
     static FailValue fail() {
-        return new FailValue();
+        return FailValue.INSTANCE;
     }
 
     public static boolean equals(LuaState state, LuaValue value1, LuaValue value2) {
         state.checkIsAlive();
         state.pushValue(value1);
         state.pushValue(value2);
-        boolean equals = LuaNatives.compareValues(state.ptr, -2, -1, LuaConsts.OP_EQ);
+        boolean equals = LuaNatives.equal(state.ptr, -2, -1);
         state.pop(2);
         return equals;
     }
@@ -68,11 +63,15 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
         return value == null || value.isNil();
     }
 
-    public boolean equals(LuaState state, LuaValue other) {
+    public final boolean equals(LuaState state, LuaValue other) {
         return equals(state, this, other);
     }
 
     public boolean isNil() {
+        return false;
+    }
+
+    public boolean isNumber() {
         return false;
     }
 
@@ -89,6 +88,7 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
     }
 
     public String getString() {
+        // TODO imitate luas tostring?
         return toString();
     }
 
@@ -99,20 +99,19 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
     public static sealed abstract class Ref extends LuaValue permits FunctionRefValue, TableRefValue {
         private final Cleaner.Cleanable cleanable;
         private final CleanableRef cleanableRef;
+        private final int reference;
         protected final LuaState state;
-        protected final int reference;
 
         protected Ref(LuaState state, int index) {
             state.checkIsAlive();
             this.state = state;
-            this.reference = LuaNatives.newRef(state.ptr, index);
-            state.aliveReferences.add(reference);
+            this.reference = state.newReference(index);
             cleanableRef = new CleanableRef(state, reference);
             cleanable = CLEANER.register(this, cleanableRef);
         }
 
         public boolean isAlive() {
-            return !state.isClosed() && state.aliveReferences.contains(reference);
+            return state.hasReference(reference);
         }
 
         public void checkIsAlive() {
@@ -128,7 +127,7 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
         @Override
         final void push(LuaState state) {
             checkIsAlive();
-            if (this.state.mainThread != state.mainThread) {
+            if (!state.isSubThread(this.state)) {
                 throw new IllegalStateException("Cannot move references between threads.");
             }
             LuaNatives.getRef(state.ptr, reference);
@@ -143,12 +142,12 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
                 return false;
             }
             Ref ref = (Ref)obj;
-            return state.mainThread == ref.state.mainThread && reference == ref.reference;
+            return ref.state.isSubThread(state) && reference == ref.reference;
         }
 
         @Override
         public int hashCode() {
-            return state.hashCode() * 17 + reference;
+            return state.getMainThread().hashCode() * 17 + reference;
         }
 
         private static class CleanableRef implements Runnable {
