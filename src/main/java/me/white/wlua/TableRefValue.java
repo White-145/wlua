@@ -3,11 +3,10 @@ package me.white.wlua;
 import java.util.*;
 
 public final class TableRefValue extends LuaValue.Ref implements TableValue {
-    private final ListRefValue list;
+    private final ListRefValue list = new ListRefValue(this);
 
     TableRefValue(LuaState state, int index) {
         super(state, index);
-        list = new ListRefValue(this);
     }
 
     public TableLiteralValue toLiteral() {

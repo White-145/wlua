@@ -10,6 +10,10 @@ public final class LuaState extends LuaValue implements AutoCloseable {
     private LuaState mainThread;
     long ptr;
 
+    // TODO global table
+    // TODO set properties (registry)
+    // TODO check for nulls in native wrappers
+
     LuaState(long ptr, int stateId, LuaState mainThread) {
         if (ptr == 0) {
             throw new IllegalStateException("Could not create new lua state.");
@@ -50,7 +54,7 @@ public final class LuaState extends LuaValue implements AutoCloseable {
         checkIsAlive();
         ValueType valueType = ValueType.fromId(LuaNatives.getType(ptr, index));
         if (valueType == null) {
-            return fail();
+            return nil();
         }
         return valueType.fromStack(this, index);
     }
@@ -100,24 +104,32 @@ public final class LuaState extends LuaValue implements AutoCloseable {
     }
 
     public void setGlobal(String name, LuaValue value) {
+        Objects.requireNonNull(name);
         checkIsAlive();
-        pushValue(value);
+        if (value == null) {
+            pushNil();
+        } else {
+            pushValue(value);
+        }
         LuaNatives.setGlobal(ptr, name);
     }
 
     public LuaValue getGlobal(String name) {
+        Objects.requireNonNull(name);
         checkIsAlive();
         LuaNatives.getGlobal(ptr, name);
-        LuaValue value = fromStack(-1);
-        LuaNatives.pop(ptr, 1);
+        LuaValue value = LuaValue.from(this, -1);
+        pop(1);
         return value;
     }
 
     public FunctionRefValue load(String chunk, String name) {
+        Objects.requireNonNull(chunk);
+        Objects.requireNonNull(name);
         checkIsAlive();
         int code = LuaNatives.loadString(ptr, chunk, name);
         LuaException.checkError(code, this);
-        LuaValue value = fromStack(-1);
+        LuaValue value = LuaValue.from(this, -1);
         pop(1);
         return (FunctionRefValue)value;
     }
@@ -127,6 +139,8 @@ public final class LuaState extends LuaValue implements AutoCloseable {
     }
 
     public VarArg run(FunctionValue chunk, VarArg args) {
+        Objects.requireNonNull(chunk);
+        Objects.requireNonNull(args);
         checkIsAlive();
         int top = LuaNatives.getTop(ptr);
         pushValue((LuaValue)chunk);
@@ -142,6 +156,7 @@ public final class LuaState extends LuaValue implements AutoCloseable {
     }
 
     private VarArg resume(FunctionValue chunk, VarArg args) {
+        Objects.requireNonNull(args);
         checkIsAlive();
         int top = LuaNatives.getTop(ptr);
         if (chunk != null) {
@@ -164,6 +179,7 @@ public final class LuaState extends LuaValue implements AutoCloseable {
         return resume(null, args);
     }
 
+    // VarArg parameter is only used for neat `return yield(result)` syntax
     public VarArg yield(VarArg result) {
         checkIsAlive();
         if (!isYieldable()) {

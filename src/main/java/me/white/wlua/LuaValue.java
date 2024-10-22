@@ -10,44 +10,44 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
         return state.fromStack(index);
     }
 
-    public static BooleanValue valueOf(boolean value) {
+    public static BooleanValue of(boolean value) {
         return new BooleanValue(value);
     }
 
-    public static IntegerValue valueOf(long value) {
+    public static IntegerValue of(long value) {
         return new IntegerValue(value);
     }
 
-    public static NumberValue valueOf(double value) {
+    public static NumberValue of(double value) {
         return new NumberValue(value);
     }
 
-    public static StringValue valueOf(String value) {
+    public static StringValue of(String value) {
         return new StringValue(value);
     }
 
-    public static FunctionLiteralValue valueOf(FunctionLiteralValue.Function value) {
+    public static FunctionLiteralValue of(FunctionLiteralValue.Function value) {
         return new FunctionLiteralValue(value);
     }
 
-    public static TableLiteralValue valueOf(Map<LuaValue, LuaValue> value) {
+    public static TableLiteralValue of(Map<LuaValue, LuaValue> value) {
         return new TableLiteralValue(value);
     }
 
-    public static ListLiteralValue valueOf(List<LuaValue> value) {
-        return new ListLiteralValue(value);
+    public static ListLiteralValue of(List<LuaValue> list) {
+        Map<LuaValue, LuaValue> map = new HashMap<>();
+        for (int i = 0; i < list.size(); ++i) {
+            map.put(LuaValue.index(i), list.get(i));
+        }
+        return (ListLiteralValue)new TableLiteralValue(map).getList();
     }
 
-    public static IntegerValue ofIndex(int index) {
+    public static IntegerValue index(int index) {
         return new IntegerValue(index + 1);
     }
 
     public static NilValue nil() {
         return NilValue.INSTANCE;
-    }
-
-    static FailValue fail() {
-        return FailValue.INSTANCE;
     }
 
     public static boolean equals(LuaState state, LuaValue value1, LuaValue value2) {
@@ -59,8 +59,8 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
         return equals;
     }
 
-    public static boolean isNil(LuaValue value) {
-        return value == null || value.isNil();
+    public static boolean isNil(Object value) {
+        return !(value instanceof LuaValue) || ((LuaValue)value).isNil();
     }
 
     public final boolean equals(LuaState state, LuaValue other) {

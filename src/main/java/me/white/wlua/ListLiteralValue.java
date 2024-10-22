@@ -5,28 +5,8 @@ import java.util.*;
 public final class ListLiteralValue extends LuaValue implements ListValue {
     private final TableLiteralValue table;
 
-    public ListLiteralValue(TableLiteralValue table) {
+    ListLiteralValue(TableLiteralValue table) {
         this.table = table;
-    }
-
-    public ListLiteralValue(Map<LuaValue, LuaValue> map) {
-        this(new TableLiteralValue(map));
-    }
-
-    public ListLiteralValue(List<LuaValue> list) {
-        this(transform(list));
-    }
-
-    public ListLiteralValue() {
-        this(new HashMap<>());
-    }
-
-    private static Map<LuaValue, LuaValue> transform(List<LuaValue> list) {
-        Map<LuaValue, LuaValue> map = new HashMap<>();
-        for (int i = 0; i < list.size(); ++i) {
-            map.put(LuaValue.ofIndex(i), list.get(i));
-        }
-        return map;
     }
 
     public ListRefValue toReference(LuaState state) {
@@ -37,6 +17,29 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
         return (ListRefValue)ref.getList();
     }
 
+    private void shift(int size, int index, int amount) {
+        for (int i = 0; i < size - index; ++i) {
+            int j = size - i - 1;
+            table.put(LuaValue.index(j + amount), table.get(LuaValue.index(j)));
+        }
+    }
+
+    private void collapse(int size, int from) {
+        int lastI = from;
+        for (int i = from; i < size; ++i) {
+            LuaValue value = table.get(LuaValue.index(i));
+            if (!LuaValue.isNil(value)) {
+                if (lastI != i) {
+                    table.put(LuaValue.index(lastI), value);
+                }
+                lastI += 1;
+            }
+        }
+        for (int i = lastI; i < size; ++i) {
+            table.remove(LuaValue.index(i));
+        }
+    }
+
     @Override
     public TableValue getTable() {
         return table;
@@ -44,31 +47,39 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
 
     @Override
     public boolean isEmpty() {
-        return !table.containsKey(LuaValue.ofIndex(0));
+        return !table.containsKey(LuaValue.index(0));
     }
 
     @Override
     public Object[] toArray() {
-        List<LuaValue> values = new ArrayList<>();
-        for (int i = 0; table.containsKey(LuaValue.ofIndex(i)); ++i) {
-            values.add(table.get(LuaValue.ofIndex(i)));
+        int size = size();
+        Object[] values = new Object[size];
+        for (int i = 0; i < size; ++i) {
+            values[i] = table.get(LuaValue.index(i));
         }
-        return values.toArray();
+        return values;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <T> T[] toArray(T[] a) {
-        List<LuaValue> values = new ArrayList<>();
-        for (int i = 0; table.containsKey(LuaValue.ofIndex(i)); ++i) {
-            values.add(table.get(LuaValue.ofIndex(i)));
+        int size = size();
+        if (a.length < size) {
+            return (T[])Arrays.copyOf(toArray(), size, a.getClass());
         }
-        return values.toArray(a);
+        for (int i = 0; i < size; ++i) {
+            a[i] = (T)table.get(LuaValue.index(i));
+        }
+        if (a.length > size) {
+            a[size] = null;
+        }
+        return a;
     }
 
     @Override
     public int size() {
         int i = 0;
-        while (table.containsKey(LuaValue.ofIndex(i))) {
+        while (table.containsKey(LuaValue.index(i))) {
             i += 1;
         }
         return i;
@@ -76,11 +87,12 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
 
     @Override
     public boolean contains(Object o) {
-        if (!(o instanceof LuaValue)) {
+        if (LuaValue.isNil(o)) {
             return false;
         }
-        for (int i = 0; table.containsKey(LuaValue.ofIndex(i)); ++i) {
-            if (table.get(LuaValue.ofIndex(i)).equals(o)) {
+        int size = size();
+        for (int i = 0; i < size; ++i) {
+            if (table.get(LuaValue.index(i)).equals(o)) {
                 return true;
             }
         }
@@ -95,11 +107,7 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
 
     @Override
     public boolean add(LuaValue value) {
-        int i = 0;
-        while (table.containsKey(LuaValue.ofIndex(i))) {
-            i += 1;
-        }
-        table.put(LuaValue.ofIndex(i), value);
+        table.put(LuaValue.index(size()), value);
         return true;
     }
 
@@ -108,82 +116,61 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
         if (!(o instanceof LuaValue)) {
             return false;
         }
-        int i = 0;
-        while (table.containsKey(LuaValue.ofIndex(i))) {
-            if (table.get(LuaValue.ofIndex(i)).equals(o)) {
+        int size = size();
+        int i;
+        for (i = 0; i < size; ++i) {
+            if (table.get(LuaValue.index(i)).equals(o)) {
                 break;
             }
             i += 1;
         }
-        while (table.containsKey(LuaValue.ofIndex(i + 1))) {
-            table.put(LuaValue.ofIndex(i), table.get(LuaValue.ofIndex(i + 1)));
-            i += 1;
-        }
-        table.remove(LuaValue.ofIndex(i));
+        table.remove(LuaValue.index(i));
+        collapse(size, i);
         return true;
     }
 
     @Override
     public void clear() {
-        for (int i = 0; table.containsKey(LuaValue.ofIndex(i)); ++i) {
-            table.remove(LuaValue.ofIndex(i));
+        int size = size();
+        for (int i = 0; i < size; ++i) {
+            table.remove(LuaValue.index(i));
         }
     }
 
     @Override
     public LuaValue get(int index) {
-        for (int i = 0; table.containsKey(LuaValue.ofIndex(i)); ++i) {
-            if (i == index) {
-                return table.get(LuaValue.ofIndex(index));
-            }
+        if (index < size()) {
+            return table.get(LuaValue.index(index));
         }
         return null;
     }
 
     @Override
     public LuaValue set(int index, LuaValue element) {
-        for (int i = 0; table.containsKey(LuaValue.ofIndex(i)); ++i) {
-            if (i == index) {
-                return table.put(LuaValue.ofIndex(index), element);
-            }
+        if (index < size()) {
+            return table.put(LuaValue.index(index), element);
         }
         return null;
     }
 
     @Override
     public void add(int index, LuaValue element) {
-        int i = 0;
-        while (table.containsKey(LuaValue.ofIndex(i))) {
-            if (i == index) {
-                break;
-            }
-            i += 1;
+        int size = size();
+        if (index >= size) {
+            return;
         }
-        LuaValue carry = table.put(LuaValue.ofIndex(i), element);
-        while (carry != null && !carry.isNil()) {
-            carry = table.put(LuaValue.ofIndex(i), carry);
-            i += 1;
-        }
+        shift(size, index, 1);
+        table.put(LuaValue.index(index), element);
     }
 
     @Override
     public LuaValue remove(int index) {
-        int i = 0;
-        while (table.containsKey(LuaValue.ofIndex(i))) {
-            if (i == index) {
-                break;
-            }
-            i += 1;
-        }
-        if (i != index) {
+        int size = size();
+        if (index >= size) {
             return null;
         }
-        LuaValue value = table.remove(LuaValue.ofIndex(i));
-        while (table.containsKey(LuaValue.ofIndex(i + 1))) {
-            table.put(LuaValue.ofIndex(i), table.get(LuaValue.ofIndex(i + 1)));
-            i += 1;
-        }
-        table.remove(LuaValue.ofIndex(i));
+        LuaValue value = table.remove(LuaValue.index(index));
+        collapse(size, index);
         return value;
     }
 
@@ -192,12 +179,11 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
         if (!(o instanceof LuaValue)) {
             return -1;
         }
-        int i = 0;
-        while (table.containsKey(LuaValue.ofIndex(i))) {
-            if (table.get(LuaValue.ofIndex(i)).equals(o)) {
+        int size = size();
+        for (int i = 0; i < size; ++i) {
+            if (table.get(LuaValue.index(i)).equals(o)) {
                 return i;
             }
-            i += 1;
         }
         return -1;
     }
@@ -207,150 +193,82 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
         if (!(o instanceof LuaValue)) {
             return -1;
         }
-        int result = -1;
-        int i = 0;
-        while (table.containsKey(LuaValue.ofIndex(i))) {
-            if (table.get(LuaValue.ofIndex(i)).equals(o)) {
-                result = i;
+        int size = size();
+        for (int i = size - 1; i >= 0; --i) {
+            if (table.get(LuaValue.index(i)).equals(o)) {
+                return i;
             }
-            i += 1;
         }
-        return result;
+        return -1;
     }
 
     @Override
     public boolean containsAll(Collection<?> c) {
-        if (c.isEmpty()) {
-            return true;
-        }
-        Set<LuaValue> set = new HashSet<>();
         for (Object o : c) {
-            if (!(o instanceof LuaValue)) {
+            if (!contains(o)) {
                 return false;
             }
-            set.add((LuaValue)o);
         }
-        int i = 0;
-        while (table.containsKey(LuaValue.ofIndex(i))) {
-            LuaValue value = table.get(LuaValue.ofIndex(i));
-            set.remove(value);
-            if (set.isEmpty()) {
-                return true;
-            }
-            i += 1;
-        }
-        return false;
+        return true;
     }
 
     @Override
     public boolean addAll(Collection<? extends LuaValue> c) {
-        if (c.isEmpty()) {
-            return false;
-        }
         boolean hasChanged = false;
-        int i = size();
         for (LuaValue value : c) {
-            if (value != null && !value.isNil()) {
-                table.put(LuaValue.ofIndex(i), value);
-                hasChanged = true;
-                i += 1;
+            if (!LuaValue.isNil(value)) {
+                add(value);
             }
         }
-        return hasChanged;
+        return true;
     }
 
     @Override
     public boolean addAll(int index, Collection<? extends LuaValue> c) {
-        List<LuaValue> values = new ArrayList<>(c.size());
+        int size = size();
+        if (index < 0 || index >= size) {
+            return false;
+        }
         for (LuaValue value : c) {
-            if (value != null && !value.isNil()) {
-                values.add(value);
+            if (!LuaValue.isNil(value)) {
+                add(index, value);
+                index += 1;
             }
-        }
-        int i = 0;
-        while (table.containsKey(LuaValue.ofIndex(i))) {
-            if (i == index) {
-                break;
-            }
-            i += 1;
-        }
-        if (i != index) {
-            for (LuaValue value : values) {
-                table.put(LuaValue.ofIndex(i), value);
-                i += 1;
-            }
-            return true;
-        }
-        while (table.containsKey(LuaValue.ofIndex(i))) {
-            i += 1;
-        }
-        for (int j = i - 1; j >= index; --j) {
-            table.put(LuaValue.ofIndex(j + values.size()), table.get(LuaValue.ofIndex(j)));
-        }
-        for (LuaValue value : values) {
-            table.put(LuaValue.ofIndex(index), value);
-            index += 1;
         }
         return true;
     }
 
     @Override
     public boolean removeAll(Collection<?> c) {
+        Set<LuaValue> values = new HashSet<>();
         boolean hasChanged = false;
-        int i = 0;
-        while (table.containsKey(LuaValue.ofIndex(i))) {
-            if (c.contains(table.get(LuaValue.ofIndex(i)))) {
-                table.remove(LuaValue.ofIndex(i));
-                hasChanged = true;
-            }
-            i += 1;
+        for (Object o : c) {
+            hasChanged = hasChanged || remove(o);
         }
-        if (!hasChanged) {
-            return false;
-        }
-        int lastI = 0;
-        for (int j = 0; j < i; ++j) {
-            LuaValue value = table.get(LuaValue.ofIndex(j));
-            if (value != null && !value.isNil()) {
-                if (lastI != j) {
-                    table.put(LuaValue.ofIndex(lastI), value);
-                }
-                lastI += 1;
-            }
-        }
-        return true;
+        return hasChanged;
     }
 
     @Override
     public boolean retainAll(Collection<?> c) {
-        if (table.isEmpty()) {
+        Set<LuaValue> values = new HashSet<>();
+        for (Object value : c) {
+            if (!LuaValue.isNil(value)) {
+                values.add((LuaValue)value);
+            }
+        }
+        if (values.isEmpty()) {
             return false;
         }
         boolean hasChanged = false;
-        int removed = 0;
-        int i = 0;
-        while (table.containsKey(LuaValue.ofIndex(i))) {
-            if (!c.contains(table.get(LuaValue.ofIndex(i)))) {
-                table.remove(LuaValue.ofIndex(i));
-                removed += 1;
+        int size = size();
+        for (int i = 0; i < size; ++i) {
+            if (!values.contains(table.get(LuaValue.index(i)))) {
+                table.remove(LuaValue.index(i));
                 hasChanged = true;
             }
-            i += 1;
         }
-        if (removed == i || !hasChanged) {
-            return hasChanged;
-        }
-        int lastI = 0;
-        for (int j = 0; j < i; ++j) {
-            LuaValue value = table.get(LuaValue.ofIndex(j));
-            if (value != null && !value.isNil()) {
-                if (lastI != j) {
-                    table.put(LuaValue.ofIndex(lastI), value);
-                }
-                lastI += 1;
-            }
-        }
-        return true;
+        collapse(size, 0);
+        return hasChanged;
     }
 
     @Override

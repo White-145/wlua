@@ -26,13 +26,12 @@ public enum MetaMethodType {
     INDEX(null, 1, 1, false),
     NEW_INDEX(null, 0, 2, false);
     // '__gc' and '__name' are used by c-java interface
-    // '__mode' and '__close' are unused
     // '__index' and '__newindex' are wrapped
 
     final String metaMethod;
     final int returns;
     final int parameters;
-    // methods like '__unm' get the same value twice
+    // unary methods get the same value twice
     final boolean doubleReference;
 
     MetaMethodType(String metaMethod, int returns, int parameters, boolean doubleReference) {

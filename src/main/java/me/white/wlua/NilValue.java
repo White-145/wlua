@@ -1,9 +1,9 @@
 package me.white.wlua;
 
-public sealed class NilValue extends LuaValue permits FailValue {
+public final class NilValue extends LuaValue {
     static final NilValue INSTANCE = new NilValue();
 
-    NilValue() { }
+    private NilValue() { }
 
     @Override
     public boolean isNil() {

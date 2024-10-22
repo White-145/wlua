@@ -7,11 +7,10 @@ import java.util.Set;
 
 public final class TableLiteralValue extends LuaValue implements TableValue {
     private final Map<LuaValue, LuaValue> map;
-    private final ListValue list;
+    private final ListValue list = new ListLiteralValue(this);
 
     public TableLiteralValue(Map<LuaValue, LuaValue> map) {
         this.map = map;
-        list = new ListLiteralValue(this);
     }
 
     public TableLiteralValue() {

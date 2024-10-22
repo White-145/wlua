@@ -23,36 +23,42 @@ public final class ListRefValue extends LuaValue implements ListValue {
     @Override
     public boolean isEmpty() {
         table.checkIsAlive();
-        return !table.containsKey(LuaValue.ofIndex(0));
+        return size() == 0;
     }
 
     @Override
     public Object[] toArray() {
         table.checkIsAlive();
-        List<LuaValue> values = new ArrayList<>();
-        for (int i = 0; table.containsKey(LuaValue.ofIndex(i)); ++i) {
-            values.add(table.get(LuaValue.ofIndex(i)));
+        int size = size();
+        Object[] values = new Object[size];
+        for (int i = 0; i < size; ++i) {
+            values[i] = table.get(LuaValue.index(i));
         }
-        return values.toArray();
+        return values;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <T> T[] toArray(T[] a) {
         table.checkIsAlive();
-        List<LuaValue> values = new ArrayList<>();
-        for (int i = 0; table.containsKey(LuaValue.ofIndex(i)); ++i) {
-            values.add(table.get(LuaValue.ofIndex(i)));
+        int size = size();
+        if (a.length < size) {
+            return (T[])Arrays.copyOf(toArray(), size, a.getClass());
         }
-        return values.toArray(a);
+        for (int i = 0; i < size; ++i) {
+            a[i] = (T)table.get(LuaValue.index(i));
+        }
+        if (a.length > size) {
+            a[size] = null;
+        }
+        return a;
     }
 
     @Override
     public int size() {
         table.checkIsAlive();
         state.pushValue(this);
-        long length = LuaNatives.length(state.ptr, -1);
-        state.pop(1);
-        return (int)length;
+        return LuaNatives.listSize(state.ptr);
     }
 
     @Override
@@ -94,63 +100,75 @@ public final class ListRefValue extends LuaValue implements ListValue {
     @Override
     public boolean containsAll(Collection<?> c) {
         table.checkIsAlive();
-        state.pushValue(this);
-        int amount = 0;
         for (Object o : c) {
-            if (o instanceof LuaValue) {
-                state.pushValue((LuaValue)o);
-                amount += 1;
+            if (!contains(o)) {
+                return false;
             }
         }
-        return LuaNatives.listContainsAll(state.ptr, amount);
+        return true;
     }
 
     @Override
     public boolean addAll(Collection<? extends LuaValue> c) {
         table.checkIsAlive();
-        state.pushValue(this);
         for (LuaValue value : c) {
-            state.pushValue(value);
+            if (!LuaValue.isNil(value)) {
+                add(value);
+            }
         }
-        return LuaNatives.listAddAll(state.ptr, c.size());
+        return true;
     }
 
     @Override
     public boolean addAll(int index, Collection<? extends LuaValue> c) {
         table.checkIsAlive();
-        state.pushValue(this);
-        for (LuaValue value : c) {
-            state.pushValue(value);
+        int size = size();
+        if (index < 0 || index >= size) {
+            return false;
         }
-        return LuaNatives.listAddAll(state.ptr, index, c.size());
+        for (LuaValue value : c) {
+            if (!LuaValue.isNil(value)) {
+                add(index, value);
+                index += 1;
+            }
+        }
+        return true;
     }
 
     @Override
     public boolean removeAll(Collection<?> c) {
         table.checkIsAlive();
-        state.pushValue(this);
-        int amount = 0;
+        boolean hasChanged = false;
         for (Object o : c) {
-            if (o instanceof LuaValue) {
-                state.pushValue((LuaValue)o);
-                amount += 1;
-            }
+            hasChanged = hasChanged || remove(o);
         }
-        return LuaNatives.listRemoveAll(state.ptr, amount);
+        return hasChanged;
     }
 
     @Override
     public boolean retainAll(Collection<?> c) {
         table.checkIsAlive();
-        state.pushValue(this);
-        int amount = 0;
-        for (Object o : c) {
-            if (o instanceof LuaValue) {
-                state.pushValue((LuaValue)o);
-                amount += 1;
+        Set<LuaValue> values = new HashSet<>();
+        for (Object value : c) {
+            if (!LuaValue.isNil(value)) {
+                values.add((LuaValue)value);
             }
         }
-        return LuaNatives.listRetainAll(state.ptr, amount);
+        if (values.isEmpty()) {
+            return false;
+        }
+        boolean hasChanged = false;
+        int size = size();
+        for (int i = 0; i < size; ++i) {
+            if (!values.contains(table.get(LuaValue.index(i)))) {
+                table.remove(LuaValue.index(i));
+                hasChanged = true;
+                i -= 1;
+            }
+        }
+        state.pushValue(this);
+        LuaNatives.listCollapse(state.ptr, size, 0);
+        return hasChanged;
     }
 
     @Override
@@ -166,7 +184,7 @@ public final class ListRefValue extends LuaValue implements ListValue {
         state.pushValue(this);
         LuaNatives.listGet(state.ptr, index);
         LuaValue value = LuaValue.from(state, -1);
-        state.pop(1);
+        state.pop(2);
         return value.isNil() ? null : value;
     }
 
@@ -177,7 +195,7 @@ public final class ListRefValue extends LuaValue implements ListValue {
         state.pushValue(element);
         LuaNatives.listSet(state.ptr, index);
         LuaValue value = LuaValue.from(state, -1);
-        state.pop(1);
+        state.pop(3);
         return value.isNil() ? null : value;
     }
 
