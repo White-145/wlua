@@ -113,10 +113,14 @@ class LuaNatives {
             Object results;
             try {
                 results = method.invoke(userdata, state, args);
-            } catch (InvocationTargetException | IllegalAccessException ignored) {
+            } catch (IllegalAccessException ignored) {
                 return error(callerPtr, "error invoking java function");
-            } catch (LuaException e) {
-                return error(callerPtr, e.getMessage());
+            } catch (InvocationTargetException e) {
+                if (e.getCause() instanceof LuaException) {
+                    return error(callerPtr, e.getCause().getMessage());
+                }
+                e.printStackTrace();
+                return error(callerPtr, "internal error");
             }
             return pushOrFail(state, results, method.getReturnType() == void.class);
         }
@@ -453,19 +457,33 @@ class LuaNatives {
     }
 
     void list_shift(lua_State* L, int index, int size, int from, int amount) {
-        int abs = lua_absindex(L, index);
+        int absindex = lua_absindex(L, index);
         for (int i = 0; i <= size - from; ++i) {
             int j = size - i;
-            lua_geti(L, abs, j);
-            lua_seti(L, abs, j + amount);
+            lua_geti(L, absindex, j);
+            lua_seti(L, absindex, j + amount);
         }
     }
 
     void list_collapse(lua_State* L, int index, int size, int from) {
-        int abs = lua_absindex(L, index);
+        int absindex = lua_absindex(L, index);
         int last_i = from;
         for (int i = from; i <= size; ++i) {
-            lua_geti(L, abs, i);
+            lua_geti(L, absindex, i);
+            if (!lua_isnil(L, -1)) {
+                if (i != last_i) {
+                    lua_seti(L, absindex, last_i);
+                } else {
+                    lua_pop(L, 1);
+                }
+                last_i += 1;
+            } else {
+                lua_pop(L, 1);
+            }
+        }
+        for (int i = last_i; i <= size; ++i) {
+            lua_pushnil(L);
+            lua_seti(L, absindex, i);
         }
     }
     */
@@ -878,12 +896,35 @@ class LuaNatives {
         return JNI_TRUE;
     */
 
+    static native boolean listRemoveEvery(long ptr); /*
+        lua_State* L = (lua_State*)ptr;
+        int size = list_size(L, -2);
+        int has_changed = 0;
+        for (int i = 0; i < size; ++i) {
+            lua_geti(L, -2, i + 1);
+            int eq = lua_compare(L, -1, -2, LUA_OPEQ);
+            lua_pop(L, 1);
+            if (eq) {
+                lua_pushnil(L);
+                lua_seti(L, -3, i + 1);
+                has_changed = 1;
+            }
+        }
+        lua_pop(L, 1);
+        if (!has_changed) {
+            lua_pop(L, 1);
+            return JNI_FALSE;
+        }
+        list_collapse(L, -1, size, 1);
+        lua_pop(L, 1);
+        return JNI_TRUE;
+    */
+
     static native boolean listRemove(long ptr); /*
         lua_State* L = (lua_State*)ptr;
         int size = list_size(L, -2);
         int has_changed = 0;
-        int i;
-        for (i = 0; i < size; ++i) {
+        for (int i = 0; i < size; ++i) {
             lua_geti(L, -2, i + 1);
             if (lua_compare(L, -1, -2, LUA_OPEQ)) {
                 lua_pop(L, 2);
@@ -898,7 +939,7 @@ class LuaNatives {
             lua_pop(L, 2);
             return JNI_FALSE;
         }
-        list_collapse(L, -1, i + 1);
+        list_collapse(L, -1, size, 1);
         lua_pop(L, 1);
         return JNI_TRUE;
     */
@@ -936,13 +977,10 @@ class LuaNatives {
         lua_State* L = (lua_State*)ptr;
         int size = list_size(L, -2);
         if (index < 0 || index >= size) {
-            lua_pop(L, 2);
-            lua_pushnil(L);
+            lua_pop(L, 1);
             return;
         }
-        lua_geti(L, -2, index + 1);
-        lua_pushvalue(L, -2);
-        lua_seti(L, -3, index + 1);
+        lua_seti(L, -2, index + 1);
     */
 
     static native void listAddIndex(long ptr, int index); /*
@@ -990,7 +1028,7 @@ class LuaNatives {
     static native int listLastIndexOf(long ptr); /*
         lua_State* L = (lua_State*)ptr;
         int size = list_size(L, -2);
-        for (int i = size - 1; i >= 0; ++i) {
+        for (int i = size - 1; i >= 0; --i) {
             lua_geti(L, -2, i + 1);
             if (lua_compare(L, -1, -2, LUA_OPEQ)) {
                 lua_pop(L, 3);
@@ -1002,8 +1040,9 @@ class LuaNatives {
         return -1;
     */
 
-    static native void listCollapse(long ptr, int size, int index); /*
+    static native void listCollapse(long ptr, int size, int from); /*
         lua_State* L = (lua_State*)ptr;
-        list_collapse(L, -1, size, index);
+        list_collapse(L, -1, size, from);
+        lua_pop(L, 1);
     */
 }

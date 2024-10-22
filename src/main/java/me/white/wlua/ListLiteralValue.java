@@ -4,6 +4,7 @@ import java.util.*;
 
 public final class ListLiteralValue extends LuaValue implements ListValue {
     private final TableLiteralValue table;
+    // TODO add throws as javadoc says
 
     ListLiteralValue(TableLiteralValue table) {
         this.table = table;
@@ -38,6 +39,21 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
         for (int i = lastI; i < size; ++i) {
             table.remove(LuaValue.index(i));
         }
+    }
+
+    private boolean removeEvery(LuaValue value) {
+        int size = size();
+        boolean hasChanged = false;
+        for (int i = 0; i < size; ++i) {
+            if (table.get(LuaValue.index(i)).equals(value)) {
+                table.remove(LuaValue.index(i));
+                hasChanged = true;
+            }
+        }
+        if (hasChanged) {
+            collapse(size, 0);
+        }
+        return hasChanged;
     }
 
     @Override
@@ -117,16 +133,14 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
             return false;
         }
         int size = size();
-        int i;
-        for (i = 0; i < size; ++i) {
+        for (int i = 0; i < size; ++i) {
             if (table.get(LuaValue.index(i)).equals(o)) {
-                break;
+                table.remove(LuaValue.index(i));
+                collapse(size, i);
+                return true;
             }
-            i += 1;
         }
-        table.remove(LuaValue.index(i));
-        collapse(size, i);
-        return true;
+        return false;
     }
 
     @Override
@@ -139,7 +153,7 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
 
     @Override
     public LuaValue get(int index) {
-        if (index < size()) {
+        if (index >= 0 && index < size()) {
             return table.get(LuaValue.index(index));
         }
         return null;
@@ -147,7 +161,7 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
 
     @Override
     public LuaValue set(int index, LuaValue element) {
-        if (index < size()) {
+        if (index >= 0 && index < size()) {
             return table.put(LuaValue.index(index), element);
         }
         return null;
@@ -156,7 +170,7 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
     @Override
     public void add(int index, LuaValue element) {
         int size = size();
-        if (index >= size) {
+        if (index < 0 || index >= size) {
             return;
         }
         shift(size, index, 1);
@@ -166,7 +180,7 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
     @Override
     public LuaValue remove(int index) {
         int size = size();
-        if (index >= size) {
+        if (index < 0 || index >= size) {
             return null;
         }
         LuaValue value = table.remove(LuaValue.index(index));
@@ -240,10 +254,12 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
 
     @Override
     public boolean removeAll(Collection<?> c) {
-        Set<LuaValue> values = new HashSet<>();
         boolean hasChanged = false;
         for (Object o : c) {
-            hasChanged = hasChanged || remove(o);
+            if (!LuaValue.isNil(o)) {
+                boolean bl = removeEvery((LuaValue)o);
+                hasChanged = hasChanged || bl;
+            }
         }
         return hasChanged;
     }

@@ -5,10 +5,10 @@ import java.util.*;
 
 public abstract non-sealed class UserData extends LuaValue {
     private static final Map<Class<? extends UserData>, FieldData> fieldDatas = new HashMap<>();
+    private final String name;
 
-    public String getName() {
-        String name = getClass().getSimpleName();
-        return name.isBlank() ? "Unknown" : name;
+    protected UserData(String name) {
+        this.name = name;
     }
 
     static FieldData getFieldData(Class<? extends UserData> clazz) {
@@ -66,7 +66,7 @@ public abstract non-sealed class UserData extends LuaValue {
     final void push(LuaState state) {
         FieldData fieldData = getFieldData(getClass());
         LuaNatives.newUserData(state.ptr, this);
-        fieldData.pushMetaTable(state, getName());
+        fieldData.pushMetaTable(state, name);
         LuaNatives.setMetaTable(state.ptr);
     }
 

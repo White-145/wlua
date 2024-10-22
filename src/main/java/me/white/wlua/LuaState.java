@@ -13,6 +13,8 @@ public final class LuaState extends LuaValue implements AutoCloseable {
     // TODO global table
     // TODO set properties (registry)
     // TODO check for nulls in native wrappers
+    // TODO custom meta methods! and remove __tostring
+    // TODO raw operations
 
     LuaState(long ptr, int stateId, LuaState mainThread) {
         if (ptr == 0) {

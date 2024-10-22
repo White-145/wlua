@@ -140,7 +140,12 @@ public final class ListRefValue extends LuaValue implements ListValue {
         table.checkIsAlive();
         boolean hasChanged = false;
         for (Object o : c) {
-            hasChanged = hasChanged || remove(o);
+            if (!LuaValue.isNil(o)) {
+                state.pushValue(this);
+                state.pushValue((LuaValue)o);
+                boolean bl = LuaNatives.listRemoveEvery(state.ptr);
+                hasChanged = hasChanged || bl;
+            }
         }
         return hasChanged;
     }
@@ -160,14 +165,14 @@ public final class ListRefValue extends LuaValue implements ListValue {
         boolean hasChanged = false;
         int size = size();
         for (int i = 0; i < size; ++i) {
-            if (!values.contains(table.get(LuaValue.index(i)))) {
+            LuaValue value = table.get(LuaValue.index(i));
+            if (!values.contains(value)) {
                 table.remove(LuaValue.index(i));
                 hasChanged = true;
-                i -= 1;
             }
         }
         state.pushValue(this);
-        LuaNatives.listCollapse(state.ptr, size, 0);
+        LuaNatives.listCollapse(state.ptr, size, 1);
         return hasChanged;
     }
 
@@ -192,10 +197,12 @@ public final class ListRefValue extends LuaValue implements ListValue {
     public LuaValue set(int index, LuaValue element) {
         table.checkIsAlive();
         state.pushValue(this);
+        LuaNatives.listGet(state.ptr, index);
+        LuaValue value = LuaValue.from(state, -1);
+        state.pop(1);
         state.pushValue(element);
         LuaNatives.listSet(state.ptr, index);
-        LuaValue value = LuaValue.from(state, -1);
-        state.pop(3);
+        state.pop(1);
         return value.isNil() ? null : value;
     }
 
