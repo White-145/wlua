@@ -1,9 +1,11 @@
 package me.white.wlua;
 
 public final class BooleanValue extends LuaValue {
+    public static final BooleanValue FALSE = new BooleanValue(false);
+    public static final BooleanValue TRUE = new BooleanValue(true);
     private final boolean value;
 
-    public BooleanValue(boolean value) {
+    private BooleanValue(boolean value) {
         this.value = value;
     }
 

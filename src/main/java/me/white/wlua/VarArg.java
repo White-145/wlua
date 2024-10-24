@@ -5,6 +5,8 @@ import java.util.Collection;
 public class VarArg {
     private LuaValue[] values;
 
+    // TODO: lualike check_arg
+
     public VarArg(LuaValue ...values) {
         int lastI = 0;
         for (int i = 0; i < values.length; ++i) {

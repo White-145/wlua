@@ -285,6 +285,7 @@ public class TestMain {
             state.run("a = ud.index");
             assert state.getGlobal("a").equals(LuaValue.of("nil"));
             state.run("ud.new = 'val'");
+            // TODO fields and functions
         }
     }
 

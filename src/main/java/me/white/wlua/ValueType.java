@@ -10,7 +10,7 @@ public enum ValueType {
     BOOLEAN(LuaNatives.TBOOLEAN, BooleanValue.class) {
         @Override
         LuaValue fromStack(LuaState state, int index) {
-            return new BooleanValue(LuaNatives.toBoolean(state.ptr, index));
+            return LuaNatives.toBoolean(state.ptr, index) ? BooleanValue.TRUE : BooleanValue.FALSE;
         }
     },
     NUMBER(LuaNatives.TNUMBER, NumberValue.class) {

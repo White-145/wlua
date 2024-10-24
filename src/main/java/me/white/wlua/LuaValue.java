@@ -11,7 +11,7 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
     }
 
     public static BooleanValue of(boolean value) {
-        return new BooleanValue(value);
+        return value ? BooleanValue.TRUE : BooleanValue.FALSE;
     }
 
     public static IntegerValue of(long value) {

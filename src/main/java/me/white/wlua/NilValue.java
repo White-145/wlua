@@ -1,7 +1,7 @@
 package me.white.wlua;
 
 public final class NilValue extends LuaValue {
-    static final NilValue INSTANCE = new NilValue();
+    public static final NilValue INSTANCE = new NilValue();
 
     private NilValue() { }
 
