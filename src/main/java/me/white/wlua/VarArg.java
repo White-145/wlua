@@ -1,11 +1,10 @@
 package me.white.wlua;
 
 import java.util.Collection;
+import java.util.function.Predicate;
 
 public class VarArg {
     private LuaValue[] values;
-
-    // TODO: lualike check_arg
 
     public VarArg(LuaValue ...values) {
         int lastI = 0;
@@ -16,7 +15,7 @@ public class VarArg {
                 lastI = i;
             }
         }
-        this.values = lastI == values.length - 1 ? values : conform(values, lastI + 1);
+        this.values = conform(values, lastI + 1);
     }
 
     public VarArg(Collection<LuaValue> values) {
@@ -48,6 +47,22 @@ public class VarArg {
 
     public int size() {
         return values.length;
+    }
+
+    public void check(int i, boolean check, String function, String details) throws LuaException {
+        if (!check) {
+            throw new LuaException("bad argument #" + i + " to '" + function + "' (" + details + ")");
+        }
+    }
+
+    public LuaValue check(int i, Predicate<LuaValue> check, String function, String details) throws LuaException {
+        LuaValue value = get(i);
+        check(i, check.test(value), function, details);
+        return value;
+    }
+
+    public UserData checkUserData(int i, Class<? extends UserData> clazz, String function, String details) throws LuaException {
+        return (UserData)check(i, value -> clazz.isAssignableFrom(value.getClass()), function, details);
     }
 
     static VarArg collect(LuaState state, int amount) {

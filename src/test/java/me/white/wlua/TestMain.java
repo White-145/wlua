@@ -285,7 +285,23 @@ public class TestMain {
             state.run("a = ud.index");
             assert state.getGlobal("a").equals(LuaValue.of("nil"));
             state.run("ud.new = 'val'");
-            // TODO fields and functions
+            state.run("a = ud.fang; ud.fang = 123");
+            assert state.getGlobal("a").equals(LuaValue.of(987));
+            assert userData.fang.equals(LuaValue.of(123));
+            state.run("a = ud.hest; ud.hest = 234");
+            assert state.getGlobal("a").equals(LuaValue.of(876));
+            assert userData.hest.equals(LuaValue.of(876));
+            state.run("a = nil");
+            assert state.getGlobal("a").isNil();
+            state.run("a = ud.pile");
+            state.run("ud.pile = 345");
+            assert state.getGlobal("a").equals(LuaValue.of("nil"));
+            assert userData.pile.equals(LuaValue.of(345));
+            state.run("a = ud.lamy; ud.lamy = 456");
+            assert state.getGlobal("a").equals(LuaValue.of(654));
+            state.run("a, b = ud:corio('lamio')");
+            assert state.getGlobal("a").equals(LuaValue.of("tanio"));
+            assert state.getGlobal("b").equals(LuaValue.of("ravio"));
         }
     }
 
@@ -323,6 +339,36 @@ public class TestMain {
         TestUserData(LuaState state) {
             super("Test");
             originalState = state;
+        }
+
+        @LuaField("fang")
+        public LuaValue fang = LuaValue.of(987);
+
+        @LuaField(value = "hest", type = FieldType.READ_ONLY)
+        public LuaValue hest = LuaValue.of(876);
+
+        @LuaField(value = "pile", type = FieldType.WRITE_ONLY)
+        public LuaValue pile = LuaValue.of(765);
+
+        @LuaAccessor("lamy")
+        public LuaValue getLamy(LuaState state) {
+            assert originalState == state;
+            return LuaValue.of(654);
+        }
+
+        @LuaAccessor("lamy")
+        public void setLamy(LuaState state, LuaValue value) {
+            assert originalState == state;
+            assert value.equals(LuaValue.of(456));
+        }
+
+        @LuaFunction("corio")
+        public VarArg corio(LuaState state, VarArg args) {
+            assert originalState == state;
+            assert args.size() == 2;
+            assert args.get(0) == this;
+            assert args.get(1).equals(LuaValue.of("lamio"));
+            return new VarArg(LuaValue.of("tanio"), LuaValue.of("ravio"));
         }
 
         @LuaMetaMethod(MetaMethodType.ADD)

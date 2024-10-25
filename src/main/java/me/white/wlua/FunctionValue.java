@@ -6,6 +6,6 @@ public sealed interface FunctionValue permits FunctionLiteralValue, FunctionRefV
 
     @FunctionalInterface
     interface Function {
-        VarArg run(LuaState state, VarArg args);
+        VarArg run(LuaState state, VarArg args) throws LuaException;
     }
 }

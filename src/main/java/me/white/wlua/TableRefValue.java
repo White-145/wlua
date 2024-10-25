@@ -5,8 +5,8 @@ import java.util.*;
 public final class TableRefValue extends LuaValue.Ref implements TableValue {
     private final ListRefValue list = new ListRefValue(this);
 
-    TableRefValue(LuaState state, int index) {
-        super(state, index);
+    TableRefValue(LuaState state, int reference) {
+        super(state, reference);
     }
 
     public TableLiteralValue toLiteral() {

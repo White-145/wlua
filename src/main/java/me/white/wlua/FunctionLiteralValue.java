@@ -13,7 +13,7 @@ public final class FunctionLiteralValue extends LuaValue implements FunctionValu
     public FunctionRefValue toReference(LuaState state) {
         state.checkIsAlive();
         state.pushValue(this);
-        FunctionRefValue ref = new FunctionRefValue(state, -1);
+        FunctionRefValue ref = state.getReference(-1, FunctionRefValue::new);
         state.pop(1);
         return ref;
     }

@@ -88,7 +88,6 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
     }
 
     public String getString() {
-        // TODO imitate luas tostring?
         return toString();
     }
 
@@ -98,16 +97,16 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
 
     public static sealed abstract class Ref extends LuaValue permits FunctionRefValue, TableRefValue {
         private final Cleaner.Cleanable cleanable;
-        private final CleanableRef cleanableRef;
+        private final RefCleanable refCleanable;
         private final int reference;
         protected final LuaState state;
 
-        protected Ref(LuaState state, int index) {
+        protected Ref(LuaState state, int reference) {
             state.checkIsAlive();
             this.state = state;
-            this.reference = state.newReference(index);
-            cleanableRef = new CleanableRef(state, reference);
-            cleanable = CLEANER.register(this, cleanableRef);
+            this.reference = reference;
+            refCleanable = new RefCleanable(state, reference);
+            cleanable = CLEANER.register(this, refCleanable);
         }
 
         public boolean isAlive() {
@@ -149,20 +148,25 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
         public int hashCode() {
             return state.getMainThread().hashCode() * 17 + reference;
         }
+    }
 
-        private static class CleanableRef implements Runnable {
-            private LuaState state;
-            private int reference;
+    private static class RefCleanable implements Runnable {
+        private LuaState state;
+        private int reference;
 
-            private CleanableRef(LuaState state, int reference) {
-                this.state = state;
-                this.reference = reference;
-            }
-
-            @Override
-            public void run() {
-                state.cleanReference(reference);
-            }
+        private RefCleanable(LuaState state, int reference) {
+            this.state = state;
+            this.reference = reference;
         }
+
+        @Override
+        public void run() {
+            state.cleanReference(reference);
+        }
+    }
+
+    @FunctionalInterface
+    interface RefValueProvider<T extends Ref> {
+        T getReference(LuaState state, int reference);
     }
 }

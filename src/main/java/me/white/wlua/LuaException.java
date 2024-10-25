@@ -10,11 +10,11 @@ public class LuaException extends RuntimeException {
             return;
         }
         String name = switch (code) {
-            case LuaNatives.ERRRUN -> "Run";
-            case LuaNatives.ERRSYNTAX -> "Syntax";
-            case LuaNatives.ERRMEM -> "Memory";
-            case LuaNatives.ERRERR -> "Error";
-            default -> "Unknown";
+            case LuaNatives.ERRRUN -> "run";
+            case LuaNatives.ERRSYNTAX -> "syntax";
+            case LuaNatives.ERRMEM -> "memory";
+            case LuaNatives.ERRERR -> "error";
+            default -> "unknown";
         };
         String msg = LuaValue.from(state, -1).getString();
         state.pop(1);

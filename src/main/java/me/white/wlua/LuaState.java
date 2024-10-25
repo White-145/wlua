@@ -1,12 +1,13 @@
 package me.white.wlua;
 
+import java.lang.ref.WeakReference;
 import java.util.*;
 
 public final class LuaState extends LuaValue implements AutoCloseable {
     private boolean isClosed = false;
     private int id;
     private List<LuaState> subThreads = new ArrayList<>();
-    private Set<Integer> aliveReferences = new HashSet<>();
+    private HashMap<Integer, WeakReference<LuaValue.Ref>> aliveReferences = new HashMap<>();
     private LuaState mainThread;
     long ptr;
 
@@ -61,18 +62,23 @@ public final class LuaState extends LuaValue implements AutoCloseable {
         return valueType.fromStack(this, index);
     }
 
-    int newReference(int index) {
+    @SuppressWarnings("unchecked")
+    <T extends Ref> T getReference(int index, RefValueProvider<T> provider) {
         int reference = LuaNatives.newRef(ptr, index);
-        mainThread.aliveReferences.add(reference);
-        return reference;
+        if (mainThread.aliveReferences.containsKey(reference)) {
+            return (T)mainThread.aliveReferences.get(reference).get();
+        }
+        T ref = provider.getReference(this, reference);
+        mainThread.aliveReferences.put(reference, new WeakReference<>(ref));
+        return ref;
     }
 
     boolean hasReference(int reference) {
-        return !isClosed() && mainThread.aliveReferences.contains(reference);
+        return !isClosed() && mainThread.aliveReferences.containsKey(reference);
     }
 
     void cleanReference(int reference) {
-        if (!isClosed() && mainThread.aliveReferences.contains(reference)) {
+        if (!isClosed() && mainThread.aliveReferences.containsKey(reference)) {
             LuaNatives.deleteRef(ptr, reference);
             mainThread.aliveReferences.remove(reference);
         }

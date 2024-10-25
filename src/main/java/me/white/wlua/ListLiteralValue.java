@@ -13,7 +13,7 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
     public ListRefValue toReference(LuaState state) {
         state.checkIsAlive();
         state.pushValue(table);
-        TableRefValue ref = new TableRefValue(state, -1);
+        TableRefValue ref = state.getReference(-1, TableRefValue::new);
         state.pop(1);
         return (ListRefValue)ref.getList();
     }

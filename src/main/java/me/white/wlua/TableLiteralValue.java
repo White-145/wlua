@@ -20,7 +20,7 @@ public final class TableLiteralValue extends LuaValue implements TableValue {
     public TableRefValue toReference(LuaState state) {
         state.checkIsAlive();
         state.pushValue(this);
-        TableRefValue ref = new TableRefValue(state, -1);
+        TableRefValue ref = state.getReference(-1, TableRefValue::new);
         state.pop(1);
         return ref;
     }

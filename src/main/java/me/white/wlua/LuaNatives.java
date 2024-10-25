@@ -184,7 +184,12 @@ class LuaNatives {
                     Object results;
                     try {
                         results = method.invoke(userdata, lua, args);
-                    } catch (IllegalAccessException | InvocationTargetException ignored) {
+                    } catch (IllegalAccessException ignored) {
+                        throw new IllegalStateException("Could not invoke java function '" + method.getName() + "'.");
+                    } catch (InvocationTargetException e) {
+                        if (e.getCause() instanceof LuaException) {
+                            throw (LuaException)e.getCause();
+                        }
                         throw new IllegalStateException("Could not invoke java function '" + method.getName() + "'.");
                     }
                     if (results instanceof VarArg) {
@@ -202,10 +207,13 @@ class LuaNatives {
                 Object results;
                 try {
                     results = method.invoke(userdata, state);
-                } catch (IllegalAccessException | InvocationTargetException ignored) {
+                } catch (IllegalAccessException ignored) {
                     return error(callerPtr, "error invoking java function");
-                } catch (LuaException e) {
-                    return error(callerPtr, e.getMessage());
+                } catch (InvocationTargetException e) {
+                    if (e.getCause() instanceof LuaException) {
+                        return error(callerPtr, e.getCause().getMessage());
+                    }
+                    return error(callerPtr, "error invoking java function");
                 }
                 return pushOrFail(state, results, method.getReturnType() == void.class);
             }
@@ -215,14 +223,19 @@ class LuaNatives {
             Object results;
             try {
                 results = method.invoke(userdata, state, key);
-            } catch (IllegalAccessException | InvocationTargetException ignored) {
+            } catch (IllegalAccessException ignored) {
                 return error(callerPtr, "error invoking java function");
-            } catch (LuaException e) {
-                return error(callerPtr, e.getMessage());
+            } catch (InvocationTargetException e) {
+                if (e.getCause() instanceof LuaException) {
+                    return error(callerPtr, e.getCause().getMessage());
+                }
+                return error(callerPtr, "error invoking java function");
             }
             return pushOrFail(state, results, method.getReturnType() == void.class);
         }
-        return 0;
+        System.out.println("not found " + key);
+        pushNil(state.ptr);
+        return 1;
     }
 
     public static int newIndex(long callerPtr, int stateIndex) {
@@ -254,8 +267,6 @@ class LuaNatives {
                     field.set(userdata, value);
                 } catch (IllegalAccessException ignored) {
                     return error(callerPtr, "error setting field");
-                } catch (LuaException e) {
-                    return error(callerPtr, e.getMessage());
                 }
                 return 1;
             }
@@ -263,10 +274,13 @@ class LuaNatives {
                 Method method = fieldData.setters.get(name);
                 try {
                     method.invoke(userdata, state, value);
-                } catch (IllegalAccessException | InvocationTargetException ignored) {
+                } catch (IllegalAccessException ignored) {
                     return error(callerPtr, "error invoking java function");
-                } catch (LuaException e) {
-                    return error(callerPtr, e.getMessage());
+                } catch (InvocationTargetException e) {
+                    if (e.getCause() instanceof LuaException) {
+                        return error(callerPtr, e.getCause().getMessage());
+                    }
+                    return error(callerPtr, "error invoking java function");
                 }
                 return 1;
             }
@@ -275,10 +289,13 @@ class LuaNatives {
             Method method = fieldData.metaMethods.get(MetaMethodType.NEW_INDEX);
             try {
                 method.invoke(userdata, state, key, value);
-            } catch (IllegalAccessException | InvocationTargetException ignored) {
+            } catch (IllegalAccessException ignored) {
                 return error(callerPtr, "error invoking java function");
-            } catch (LuaException e) {
-                return error(callerPtr, e.getMessage());
+            } catch (InvocationTargetException e) {
+                if (e.getCause() instanceof LuaException) {
+                    return error(callerPtr, e.getCause().getMessage());
+                }
+                return error(callerPtr, "error invoking java function");
             }
             return 1;
         }
