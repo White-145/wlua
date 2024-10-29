@@ -29,19 +29,18 @@ dependencies {
 jnigen {
     sharedLibName = "wlua"
     all {
-        cFlags += ' -DLUA_COMPAT_5_3'
-        cppFlags += ' -DLUA_COMPAT_5_3'
         headerDirs = ['lua']
         cppExcludes = ['lua/testes/libs/*', 'lua/onelua.c']
         cExcludes = ['lua/testes/libs/*', 'lua/onelua.c']
         libraries = ' -lm '
-
-//        cFlags += " -fvisibility=hidden "
-//        cppFlags += " -std=c++11 -fvisibility=hidden "
-//        linkerFlags += " -fvisibility=hidden "
     }
     add(Windows, x32)
     add(Windows, x64)
+    each({ it.os == Windows }) {
+        String flags = ' -DLUA_USE_WINDOWS '
+        cFlags += flags
+        cppFlags += flags
+    }
 }
 
 tasks.register('unpackNatives', Copy) {

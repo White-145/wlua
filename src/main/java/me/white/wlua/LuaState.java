@@ -4,6 +4,7 @@ import java.lang.ref.WeakReference;
 import java.util.*;
 
 public final class LuaState extends LuaValue implements AutoCloseable {
+    private Properties properties = new Properties();
     private boolean isClosed = false;
     private int id;
     private List<LuaState> subThreads = new ArrayList<>();
@@ -11,7 +12,6 @@ public final class LuaState extends LuaValue implements AutoCloseable {
     private LuaState mainThread;
     long ptr;
 
-    // TODO set properties (registry)
     // TODO custom meta methods! and remove __tostring
     // TODO raw operations
 
@@ -24,6 +24,7 @@ public final class LuaState extends LuaValue implements AutoCloseable {
         this.mainThread = mainThread == null ? this : mainThread;
         if (mainThread != null) {
             mainThread.subThreads.add(this);
+            properties.putAll(mainThread.properties);
         }
         LuaNatives.initState(ptr, id);
     }
@@ -105,7 +106,12 @@ public final class LuaState extends LuaValue implements AutoCloseable {
         return thread;
     }
 
+    public Properties getProperties() {
+        return properties;
+    }
+
     public void openLibs() {
+        // TODO do better
         checkIsAlive();
         LuaNatives.openLibs(ptr);
     }
