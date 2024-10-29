@@ -7,13 +7,11 @@ public final class LuaState extends LuaValue implements AutoCloseable {
     private boolean isClosed = false;
     private int id;
     private List<LuaState> subThreads = new ArrayList<>();
-    private HashMap<Integer, WeakReference<LuaValue.Ref>> aliveReferences = new HashMap<>();
+    private Map<Integer, WeakReference<LuaValue.Ref>> aliveReferences = new HashMap<>();
     private LuaState mainThread;
     long ptr;
 
-    // TODO global table
     // TODO set properties (registry)
-    // TODO check for nulls in native wrappers
     // TODO custom meta methods! and remove __tostring
     // TODO raw operations
 
@@ -95,6 +93,7 @@ public final class LuaState extends LuaValue implements AutoCloseable {
     }
 
     public boolean isSubThread(LuaState thread) {
+        Objects.requireNonNull(thread);
         return !isClosed() && thread.mainThread == mainThread;
     }
 
@@ -109,6 +108,14 @@ public final class LuaState extends LuaValue implements AutoCloseable {
     public void openLibs() {
         checkIsAlive();
         LuaNatives.openLibs(ptr);
+    }
+
+    public TableRefValue getGlobalTable() {
+        checkIsAlive();
+        LuaNatives.pushGlobalTable(ptr);
+        LuaValue ref = LuaValue.from(this, -1);
+        pop(1);
+        return (TableRefValue)ref;
     }
 
     public void setGlobal(String name, LuaValue value) {

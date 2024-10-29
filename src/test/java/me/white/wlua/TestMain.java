@@ -67,6 +67,9 @@ public class TestMain {
             state.run("a = c(6)");
             assert ((FunctionRefValue)func).run(state, new VarArg(LuaValue.of(3))).get(0).equals(LuaValue.of(6));
             assert state.getGlobal("a").equals(LuaValue.of(720));
+            assert state.getGlobalTable().get(LuaValue.of("a")).equals(state.getGlobal("a"));
+            state.getGlobalTable().put(LuaValue.of("b"), LuaValue.of(890));
+            assert state.getGlobal("b").equals(LuaValue.of(890));
             assert state.run("return -1").size() == 1;
             assert state.run("return 'foo'").get(0).equals(LuaValue.of("foo"));
         }

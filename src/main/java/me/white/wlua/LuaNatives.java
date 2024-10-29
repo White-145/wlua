@@ -1062,4 +1062,9 @@ class LuaNatives {
         list_collapse(L, -1, size, from);
         lua_pop(L, 1);
     */
+
+    static native void pushGlobalTable(long ptr); /*
+        lua_State* L = (lua_State*)ptr;
+        lua_pushglobaltable(L);
+    */
 }
