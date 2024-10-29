@@ -22,22 +22,30 @@ public enum MetaMethodType {
     LESS_EQUAL("__le", 1, 1, false),
     CALL("__call", -1, -1, false),
     CLOSE("__close", 0, 1, false),
-    TO_STRING("__tostring", 1, 0, false),
     INDEX(null, 1, 1, false),
     NEW_INDEX(null, 0, 2, false);
     // '__gc' and '__name' are used by c-java interface
     // '__index' and '__newindex' are wrapped
 
-    final String metaMethod;
+    final String name;
     final int returns;
     final int parameters;
     // unary methods get the same value twice
     final boolean doubleReference;
 
-    MetaMethodType(String metaMethod, int returns, int parameters, boolean doubleReference) {
-        this.metaMethod = metaMethod;
+    MetaMethodType(String name, int returns, int parameters, boolean doubleReference) {
+        this.name = name;
         this.returns = returns;
         this.parameters = parameters;
         this.doubleReference = doubleReference;
+    }
+
+    static MetaMethodType byName(String metaMethod) {
+        for (MetaMethodType type : MetaMethodType.values()) {
+            if (type.name != null && type.name.equals(metaMethod)) {
+                return type;
+            }
+        }
+        return null;
     }
 }

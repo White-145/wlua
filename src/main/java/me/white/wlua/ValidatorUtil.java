@@ -87,4 +87,17 @@ class ValidatorUtil {
             throw new IllegalStateException("Accessor " + what + " should either return value of type LuaValue or return void.");
         }
     }
+
+    static void validateCustomMetaMethod(Method method, String name) {
+        String what = "Custom meta method '" + method.getName() + "' for name '" + name + "'";
+        if (method.getParameterCount() < 1 || !method.getParameterTypes()[0].isAssignableFrom(LuaState.class)) {
+            throw new IllegalStateException(what + " should take at least 1 parameter, with first parameter of type LuaState.");
+        }
+        if (!VarArg.class.isAssignableFrom(method.getReturnType()) && !LuaValue.class.isAssignableFrom(method.getReturnType()) && method.getReturnType() != void.class) {
+            throw new IllegalStateException(what + " should return void or value of type VarArg or LuaValue.");
+        }
+        if (method.getParameterCount() != 2 || !method.getParameterTypes()[1].isAssignableFrom(VarArg.class)) {
+            throw new IllegalStateException(what + " should take 1 value parameter of type VarArg.");
+        }
+    }
 }

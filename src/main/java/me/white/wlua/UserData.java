@@ -76,6 +76,7 @@ public abstract non-sealed class UserData extends LuaValue {
         final Map<String, Field> writeFields = new HashMap<>();
         final Map<String, Method> functions = new HashMap<>();
         final EnumMap<MetaMethodType, Method> metaMethods = new EnumMap<>(MetaMethodType.class);
+        final Map<String, Method> customMetaMethods = new HashMap<>();
         final Map<String, Method> getters = new HashMap<>();
         final Map<String, Method> setters = new HashMap<>();
 
@@ -90,6 +91,7 @@ public abstract non-sealed class UserData extends LuaValue {
             Set<String> getterNames = new HashSet<>();
             Set<String> setterNames = new HashSet<>();
 
+            // TODO throw proper exceptions? should something other than IllegalStateException be used here?
             for (Field field : clazz.getFields()) {
                 if (field.isAnnotationPresent(LuaField.class)) {
                     LuaField annotation = field.getAnnotation(LuaField.class);
@@ -147,6 +149,14 @@ public abstract non-sealed class UserData extends LuaValue {
                     }
                     definedNames.add(name);
                     accessorNames.add(name);
+                } else if (method.isAnnotationPresent(LuaCustomMetaMethod.class)) {
+                    LuaCustomMetaMethod annotation = method.getAnnotation(LuaCustomMetaMethod.class);
+                    String name = annotation.value();
+                    if (customMetaMethods.containsKey(name) || metaMethods.containsKey(MetaMethodType.byName(name))) {
+                        throw new IllegalStateException("Meta method with name '" + name + "' is already defined.");
+                    }
+                    ValidatorUtil.validateCustomMetaMethod(method, name);
+                    customMetaMethods.put(name, method);
                 }
             }
         }
@@ -156,9 +166,12 @@ public abstract non-sealed class UserData extends LuaValue {
             boolean isNew = LuaNatives.newMetaTable(state.ptr, metaTableName, name);
             if (isNew) {
                 for (MetaMethodType type : metaMethods.keySet()) {
-                    if (type.metaMethod != null) {
-                        LuaNatives.setMetaMethod(state.ptr, type.metaMethod, type.ordinal(), type.returns);
+                    if (type.name != null) {
+                        LuaNatives.setMetaMethod(state.ptr, type.name, type.ordinal(), type.returns);
                     }
+                }
+                for (Map.Entry<String, Method> metaMethod : customMetaMethods.entrySet()) {
+                    LuaNatives.setCustomMetaMethod(state.ptr, metaMethod.getKey(), metaMethod.getValue());
                 }
             }
         }

@@ -36,11 +36,6 @@ jnigen {
     }
     add(Windows, x32)
     add(Windows, x64)
-    each({ it.os == Windows }) {
-        String flags = ' -DLUA_USE_WINDOWS '
-        cFlags += flags
-        cppFlags += flags
-    }
 }
 
 tasks.register('unpackNatives', Copy) {

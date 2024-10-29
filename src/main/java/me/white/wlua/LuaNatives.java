@@ -83,7 +83,44 @@ class LuaNatives {
         } catch (LuaException e) {
             return error(callerPtr, e.getMessage());
         }
-        return pushOrFail(state, results, false);
+        return pushOrFail(state, results, true);
+    }
+
+    private static int invokeMethod(long callerPtr, int stateIndex, String name, int params) {
+        LuaState state = LuaInstances.get(stateIndex);
+        if (state == null) {
+            return error(callerPtr, "error getting lua state");
+        }
+        state.checkIsAlive();
+        LuaValue userdataValue = LuaValue.from(state, 1);
+        LuaNatives.remove(state.ptr, 1);
+        if (!(userdataValue instanceof UserData)) {
+            return error(callerPtr, "error getting userdata");
+        }
+        UserData userdata = (UserData)userdataValue;
+        UserData.FieldData fieldData = UserData.getFieldData(userdata.getClass());
+        if (fieldData == null) {
+            return error(callerPtr, "error getting field data");
+        }
+        if (!fieldData.customMetaMethods.containsKey(name)) {
+            return error(callerPtr, "error getting java function");
+        }
+        Method method = fieldData.customMetaMethods.get(name);
+        int total = LuaNatives.getTop(state.ptr);
+        VarArg args = VarArg.collect(state, total);
+        Object results;
+        try {
+            results = method.invoke(userdata, state, args);
+        } catch (IllegalAccessException ignored) {
+            return error(callerPtr, "error invoking java function");
+        } catch (InvocationTargetException e) {
+            if (e.getCause() instanceof LuaException) {
+                return error(callerPtr, e.getCause().getMessage());
+            }
+            e.printStackTrace();
+            return error(callerPtr, "internal error");
+        }
+        return pushOrFail(state, results, method.getReturnType() == void.class);
     }
 
     private static int invokeMeta(long callerPtr, int stateIndex, int metaMethodType) {
@@ -320,6 +357,7 @@ class LuaNatives {
     jint env_version;
     jclass natives_class;
     jmethodID invoke_method;
+    jmethodID invoke_method_method;
     jmethodID adopt_method;
     jmethodID invoke_meta_method;
     jmethodID throwable_tostring_method;
@@ -428,6 +466,15 @@ class LuaNatives {
         return return_or_error(env, L, returns);
     }
 
+    int method_wrapper(lua_State* L) {
+        const char* name = lua_tostring(L, lua_upvalueindex(1));
+        int state_index = get_state_index(L);
+        JNIEnv* env = get_env(L);
+        int returns = env->CallStaticIntMethod(natives_class, invoke_method_method, (jlong)L, (jint)state_index, env->NewStringUTF(name), (jint)lua_gettop(L));
+        check_yield(L, returns, -1);
+        return return_or_error(env, L, returns);
+    }
+
     int meta_method_wrapper(lua_State* L) {
         int type = lua_tointeger(L, lua_upvalueindex(1));
         int results = lua_tointeger(L, lua_upvalueindex(2));
@@ -523,6 +570,7 @@ class LuaNatives {
             natives_class = (jclass)env->NewGlobalRef(local_ref);
         }
         invoke_method = env->GetStaticMethodID(natives_class, "invoke", "(JILjava/lang/Object;I)I");
+        invoke_method_method = env->GetStaticMethodID(natives_class, "invokeMethod", "(JILjava/lang/String;I)I");
         adopt_method = env->GetStaticMethodID(natives_class, "adopt", "(IJ)I");
         invoke_meta_method = env->GetStaticMethodID(natives_class, "invokeMeta", "(JII)I");
         index_method = env->GetStaticMethodID(natives_class, "index", "(JI)I");
@@ -1066,5 +1114,12 @@ class LuaNatives {
     static native void pushGlobalTable(long ptr); /*
         lua_State* L = (lua_State*)ptr;
         lua_pushglobaltable(L);
+    */
+
+    static native void setCustomMetaMethod(long ptr, String name, Method method); /*
+        lua_State* L = (lua_State*)ptr;
+        lua_pushstring(L, name);
+        lua_pushcclosure(L, &method_wrapper, 1);
+        lua_setfield(L, -2, name);
     */
 }

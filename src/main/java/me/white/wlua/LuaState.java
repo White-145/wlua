@@ -12,7 +12,6 @@ public final class LuaState extends LuaValue implements AutoCloseable {
     private LuaState mainThread;
     long ptr;
 
-    // TODO custom meta methods! and remove __tostring
     // TODO raw operations
 
     LuaState(long ptr, int stateId, LuaState mainThread) {
