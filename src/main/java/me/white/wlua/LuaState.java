@@ -12,8 +12,6 @@ public final class LuaState extends LuaValue implements AutoCloseable {
     private LuaState mainThread;
     long ptr;
 
-    // TODO raw operations
-
     LuaState(long ptr, int stateId, LuaState mainThread) {
         if (ptr == 0) {
             throw new IllegalStateException("Could not create new lua state.");

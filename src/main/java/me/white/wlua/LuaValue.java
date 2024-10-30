@@ -50,21 +50,8 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
         return NilValue.INSTANCE;
     }
 
-    public static boolean equals(LuaState state, LuaValue value1, LuaValue value2) {
-        state.checkIsAlive();
-        state.pushValue(value1);
-        state.pushValue(value2);
-        boolean equals = LuaNatives.equal(state.ptr, -2, -1);
-        state.pop(2);
-        return equals;
-    }
-
     public static boolean isNil(Object value) {
         return !(value instanceof LuaValue) || ((LuaValue)value).isNil();
-    }
-
-    public final boolean equals(LuaState state, LuaValue other) {
-        return equals(state, this, other);
     }
 
     public boolean isNil() {

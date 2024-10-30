@@ -912,11 +912,6 @@ class LuaNatives {
         return (jint)luaL_loadbuffer(L, string, std::strlen(string), name);
     */
 
-    static native boolean equal(long ptr, int index1, int index2); /*
-        lua_State* L = (lua_State*)ptr;
-        return JAVA_BOOLEAN(lua_compare(L, index1, index2, LUA_OPEQ));
-    */
-
     static native int resume(long ptr, int args); /*
         lua_State* L = (lua_State*)ptr;
         lua_getfield(L, LUA_REGISTRYINDEX, YIELD_FIELD);
