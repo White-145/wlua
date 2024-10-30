@@ -347,6 +347,9 @@ public class TestMain {
             state.run("a, b = ud:corio('lamio')");
             assert state.getGlobal("a").equals(LuaValue.of("tanio"));
             assert state.getGlobal("b").equals(LuaValue.of("ravio"));
+            state.openLib(LuaState.Library.BASIC);
+            state.run("a = tostring(ud)");
+            assert state.getGlobal("a").equals(LuaValue.of("string"));
         }
     }
 
@@ -565,6 +568,11 @@ public class TestMain {
             assert originalState == state;
             key.equals(LuaValue.of("new"));
             value.equals(LuaValue.of("val"));
+        }
+
+        @LuaCustomMetaMethod("__tostring")
+        public VarArg string(LuaState state, VarArg args) {
+            return new VarArg(LuaValue.of("string"));
         }
     }
 }

@@ -109,10 +109,8 @@ public final class LuaState extends LuaValue implements AutoCloseable {
         return properties;
     }
 
-    public void openLibs() {
-        // TODO do better
-        checkIsAlive();
-        LuaNatives.openLibs(ptr);
+    public void openLib(Library lib) {
+        lib.open(this);
     }
 
     public TableRefValue getGlobalTable() {
@@ -271,5 +269,29 @@ public final class LuaState extends LuaValue implements AutoCloseable {
     @Override
     public int hashCode() {
         return Long.hashCode(ptr);
+    }
+
+    public enum Library {
+        ALL(-1),
+        BASIC(0),
+        COROUTINE(1),
+        PACKAGE(2),
+        STRING(3),
+        UTF8(4),
+        TABLE(5),
+        MATH(6),
+        IO(7),
+        OS(8),
+        DEBUG(9);
+
+        final int id;
+
+        Library(int id) {
+            this.id = id;
+        }
+
+        void open(LuaState state) {
+            LuaNatives.openLib(state.ptr, id);
+        }
     }
 }

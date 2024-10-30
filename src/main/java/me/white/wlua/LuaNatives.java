@@ -853,9 +853,43 @@ class LuaNatives {
         return JAVA_BOOLEAN(lua_next(L, -2));
     */
 
-    static native void openLibs(long ptr); /*
+    static native void openLib(long ptr, int id); /*
         lua_State* L = (lua_State*)ptr;
-        luaL_openlibs(L);
+        switch (id) {
+            case 0:
+                luaopen_base(L);
+                break;
+            case 1:
+                luaopen_coroutine(L);
+                break;
+            case 2:
+                luaopen_package(L);
+                break;
+            case 3:
+                luaopen_string(L);
+                break;
+            case 4:
+                luaopen_utf8(L);
+                break;
+            case 5:
+                luaopen_table(L);
+                break;
+            case 6:
+                luaopen_math(L);
+                break;
+            case 7:
+                luaopen_io(L);
+                break;
+            case 8:
+                luaopen_os(L);
+                break;
+            case 9:
+                luaopen_debug(L);
+                break;
+            case -1:
+            default:
+                luaL_openlibs(L);
+        }
     */
 
     static native void setGlobal(long ptr, String name); /*
