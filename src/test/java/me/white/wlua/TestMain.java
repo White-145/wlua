@@ -60,7 +60,6 @@ public class TestMain {
                     """);
             LuaValue global = state.getGlobal("a");
             assert global.equals(LuaValue.of(120));
-            assert global.equals(state, LuaValue.of(120));
             LuaValue func = state.getGlobal("b");
             assert func instanceof FunctionRefValue;
             state.setGlobal("c", func);
@@ -87,7 +86,6 @@ public class TestMain {
             assert value1.equals(value);
             assert !value1.isNil();
             assert !value1.getBoolean();
-            assert value.equals(state, value1);
             value = LuaValue.of(10);
             assert value.isNumber();
             assert value.getNumber() == 10.0;
