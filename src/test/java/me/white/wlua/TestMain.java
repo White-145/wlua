@@ -162,6 +162,18 @@ public class TestMain {
                 assert values.contains(entry.getValue());
                 keySet.remove(entry.getKey());
             }
+            Iterator<Map.Entry<LuaValue, LuaValue>> iterator = table.entrySet().iterator();
+            int times = 0;
+            while (iterator.hasNext()) {
+                Map.Entry<LuaValue, LuaValue> next = iterator.next();
+                iterator.remove();
+                times += 1;
+                if (times == 3) {
+                    break;
+                }
+            }
+            assert table.size() == 2;
+            assert times == 3;
             table.clear();
             assert table.isEmpty();
             assert table.keySet().isEmpty();
@@ -225,11 +237,41 @@ public class TestMain {
         list.removeAll(hum);
         assert Arrays.equals(list.toArray(), new LuaValue[]{ LuaValue.of(94), LuaValue.of(94) });
         assert list.lastIndexOf(LuaValue.of(94)) == 1;
+        int times = 0;
+        for (LuaValue value : list) {
+            assert value.equals(LuaValue.of(94));
+            times += 1;
+        }
+        assert times == 2;
+        Iterator<LuaValue> iterator = list.iterator();
+        while (iterator.hasNext()) {
+            LuaValue value = iterator.next();
+            iterator.remove();
+        }
+        assert list.isEmpty();
+        list.add(LuaValue.of(-100));
+        list.add(LuaValue.of(-99));
+        list.add(LuaValue.of(-97));
+        list.add(LuaValue.of(-96));
+        ListIterator<LuaValue> listIterator = list.listIterator(1);
+        assert listIterator.hasPrevious();
+        assert listIterator.hasNext();
+        LuaValue previous = listIterator.previous();
+        assert previous.equals(LuaValue.of(-100));
+        assert listIterator.nextIndex() == 0;
+        listIterator.remove();
+        assert listIterator.nextIndex() == 0;
+        listIterator.next();
+        listIterator.next();
+        assert listIterator.nextIndex() == 2;
+        listIterator.add(LuaValue.of(-98));
+        assert listIterator.nextIndex() == 3;
+        previous = listIterator.previous();
+        assert previous.equals(LuaValue.of(-98));
         list.clear();
         assert list.isEmpty();
         assert table.get(LuaValue.of("foo")).equals(LuaValue.of(7));
         assert table.get(LuaValue.of("bar")).equals(LuaValue.of(22));
-        // TODO iterators
     }
 
     public static void testList() {

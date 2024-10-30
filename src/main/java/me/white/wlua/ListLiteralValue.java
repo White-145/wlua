@@ -4,7 +4,6 @@ import java.util.*;
 
 public final class ListLiteralValue extends LuaValue implements ListValue {
     private final TableLiteralValue table;
-    // TODO add throws as javadoc says
 
     ListLiteralValue(TableLiteralValue table) {
         this.table = table;
@@ -117,8 +116,7 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
 
     @Override
     public Iterator<LuaValue> iterator() {
-        // TODO
-        throw new UnsupportedOperationException();
+        return new LuaListIterator(this);
     }
 
     @Override
@@ -170,8 +168,12 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
     @Override
     public void add(int index, LuaValue element) {
         int size = size();
-        if (index < 0 || index >= size) {
+        if (index >= size) {
+            add(element);
             return;
+        }
+        if (index < 0) {
+            index = 0;
         }
         shift(size, index, 1);
         table.put(LuaValue.index(index), element);
@@ -289,14 +291,12 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
 
     @Override
     public ListIterator<LuaValue> listIterator() {
-        // TODO
-        throw new UnsupportedOperationException();
+        return new LuaListListIterator(this, 0);
     }
 
     @Override
     public ListIterator<LuaValue> listIterator(int index) {
-        // TODO
-        throw new UnsupportedOperationException();
+        return new LuaListListIterator(this, index);
     }
 
     @Override
@@ -323,5 +323,115 @@ public final class ListLiteralValue extends LuaValue implements ListValue {
     @Override
     public int hashCode() {
         return table.hashCode();
+    }
+
+    static class LuaListIterator implements Iterator<LuaValue> {
+        private final ListValue list;
+        private int index = 0;
+
+        LuaListIterator(ListValue list) {
+            this.list = list;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return index < list.size();
+        }
+
+        @Override
+        public LuaValue next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            LuaValue value = list.get(index);
+            index += 1;
+            return value;
+        }
+
+        @Override
+        public void remove() {
+            index -= 1;
+            if (index < 0 || index >= list.size()) {
+                throw new NoSuchElementException();
+            }
+            list.remove(index);
+        }
+    }
+
+    static class LuaListListIterator implements ListIterator<LuaValue> {
+        private final ListValue list;
+        private boolean hasRemoved = false;
+        private int lastIndex = -1;
+        private int index;
+
+        LuaListListIterator(ListValue list, int index) {
+            this.list = list;
+            this.index = index;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return index >= 0 && index < list.size();
+        }
+
+        @Override
+        public LuaValue next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            lastIndex = index;
+            LuaValue value = list.get(index);
+            index += 1;
+            return value;
+        }
+
+        @Override
+        public boolean hasPrevious() {
+            return index > 0 && index <= list.size();
+        }
+
+        @Override
+        public LuaValue previous() {
+            if (!hasPrevious()) {
+                throw new NoSuchElementException();
+            }
+            lastIndex = index;
+            LuaValue value = list.get(index - 1);
+            index -= 1;
+            return value;
+        }
+
+        @Override
+        public int nextIndex() {
+            return index;
+        }
+
+        @Override
+        public int previousIndex() {
+            return index - 1;
+        }
+
+        @Override
+        public void remove() {
+            list.remove(lastIndex);
+            if (index >= lastIndex) {
+                index -= 1;
+            }
+        }
+
+        @Override
+        public void set(LuaValue value) {
+            list.set(lastIndex, value);
+        }
+
+        @Override
+        public void add(LuaValue value) {
+            list.add(index, value);
+            if (index < 0) {
+                index = 1;
+            } else if (index < list.size()) {
+                index += 1;
+            }
+        }
     }
 }

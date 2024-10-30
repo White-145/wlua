@@ -151,7 +151,7 @@ public final class TableRefValue extends LuaValue.Ref implements TableValue {
     @Override
     public Set<Entry<LuaValue, LuaValue>> entrySet() {
         checkIsAlive();
-        return new TableSet();
+        return new TableSet(this);
     }
 
     @Override
@@ -159,58 +159,73 @@ public final class TableRefValue extends LuaValue.Ref implements TableValue {
         return ValueType.TABLE;
     }
 
-    private class TableSet extends AbstractSet<Entry<LuaValue, LuaValue>> {
+    private static class TableSet extends AbstractSet<Entry<LuaValue, LuaValue>> {
+        private final TableRefValue table;
+
+        TableSet(TableRefValue table) {
+            this.table = table;
+        }
+
         @Override
         public Iterator<Entry<LuaValue, LuaValue>> iterator() {
-            checkIsAlive();
-            return new TableIterator();
+            table.checkIsAlive();
+            return new TableIterator(table);
         }
 
         @Override
         public int size() {
-            checkIsAlive();
-            return TableRefValue.this.size();
+            table.checkIsAlive();
+            return table.size();
         }
     }
 
-    private class TableIterator implements Iterator<Entry<LuaValue, LuaValue>> {
+    private static class TableIterator implements Iterator<Entry<LuaValue, LuaValue>> {
+        private final TableRefValue table;
         private LuaValue key = LuaValue.nil();
+        private boolean hasRemoved = false;
 
-        @Override
-        public boolean hasNext() {
-            checkIsAlive();
-            state.pushValue(TableRefValue.this);
-            state.pushValue(key);
-            boolean hasNext = LuaNatives.tableNext(state.ptr);
-            state.pop(hasNext ? 3 : 1);
-            return hasNext;
+        TableIterator(TableRefValue table) {
+            this.table = table;
         }
 
-        @Override
-        public Entry<LuaValue, LuaValue> next() {
-            checkIsAlive();
-            state.pushValue(TableRefValue.this);
-            state.pushValue(key);
-            if (!LuaNatives.tableNext(state.ptr)) {
-                state.pop(1);
-                throw new NoSuchElementException();
+        private Entry<LuaValue, LuaValue> getNext() {
+            table.checkIsAlive();
+            table.state.pushValue(table);
+            table.state.pushValue(key);
+            boolean hasNext = LuaNatives.tableNext(table.state.ptr);
+            if (!hasNext) {
+                table.state.pop(1);
+                return null;
             }
-            key = LuaValue.from(state, -2);
-            LuaValue value = LuaValue.from(state, -1);
-            state.pop(3);
+            LuaValue key = LuaValue.from(table.state, -2);
+            LuaValue value = LuaValue.from(table.state, -1);
+            table.state.pop(3);
             return new AbstractMap.SimpleEntry<>(key, value);
         }
 
         @Override
+        public boolean hasNext() {
+            return getNext() != null;
+        }
+
+        @Override
+        public Entry<LuaValue, LuaValue> next() {
+            Entry<LuaValue, LuaValue> entry = getNext();
+            if (entry == null) {
+                throw new NoSuchElementException();
+            }
+            key = entry.getKey();
+            hasRemoved = false;
+            return entry;
+        }
+
+        @Override
         public void remove() {
-            checkIsAlive();
-            if (LuaValue.isNil(key)) {
+            if (hasRemoved) {
                 throw new IllegalStateException();
             }
-            state.pushValue(TableRefValue.this);
-            state.pushValue(key);
-            LuaNatives.tableRemove(state.ptr);
-            state.pop(1);
+            table.remove(key);
+            hasRemoved = true;
         }
     }
 }

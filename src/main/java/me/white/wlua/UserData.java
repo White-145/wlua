@@ -91,7 +91,6 @@ public abstract non-sealed class UserData extends LuaValue {
             Set<String> getterNames = new HashSet<>();
             Set<String> setterNames = new HashSet<>();
 
-            // TODO throw proper exceptions? should something other than IllegalStateException be used here?
             for (Field field : clazz.getFields()) {
                 if (field.isAnnotationPresent(LuaField.class)) {
                     LuaField annotation = field.getAnnotation(LuaField.class);

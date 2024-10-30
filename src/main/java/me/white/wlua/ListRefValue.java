@@ -74,8 +74,7 @@ public final class ListRefValue extends LuaValue implements ListValue {
 
     @Override
     public Iterator<LuaValue> iterator() {
-        // TODO
-        throw new UnsupportedOperationException();
+        return new ListLiteralValue.LuaListIterator(this);
     }
 
     @Override
@@ -248,14 +247,12 @@ public final class ListRefValue extends LuaValue implements ListValue {
 
     @Override
     public ListIterator<LuaValue> listIterator() {
-        // TODO
-        throw new UnsupportedOperationException();
+        return new ListLiteralValue.LuaListListIterator(this, 0);
     }
 
     @Override
     public ListIterator<LuaValue> listIterator(int index) {
-        // TODO
-        throw new UnsupportedOperationException();
+        return new ListLiteralValue.LuaListListIterator(this, index);
     }
 
     @Override

@@ -836,12 +836,6 @@ class LuaNatives {
         lua_setfield(L, -2, name);
     */
 
-    static native void tableRemove(long ptr); /*
-        lua_State* L = (lua_State*)ptr;
-        lua_pushnil(L);
-        lua_settable(L, -3);
-    */
-
     static native void tableClear(long ptr); /*
         lua_State* L = (lua_State*)ptr;
         lua_pushnil(L);
