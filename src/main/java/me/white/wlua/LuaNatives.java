@@ -349,9 +349,11 @@ class LuaNatives {
 
     #define JAVA_STATE_INDEX "state_index"
     #define JAVA_OBJECT_GC "object_gc"
-    #define JAVA_BOOLEAN(bool) (bool ? JNI_TRUE : JNI_FALSE)
+    #define to_jboolean(bool) (bool ? JNI_TRUE : JNI_FALSE)
 
     #define YIELD_FIELD "yield"
+    #define REFERENCES_FIELD "references"
+    #define NEXTREF_FIELD "next_reference"
 
     JavaVM* java_vm = NULL;
     jint env_version;
@@ -577,7 +579,7 @@ class LuaNatives {
         new_index_method = env->GetStaticMethodID(natives_class, "newIndex", "(JI)I");
         jclass throwable_class = env->FindClass("java/lang/Throwable");
         throwable_tostring_method = env->GetMethodID(throwable_class, "toString", "()Ljava/lang/String;");
-        return !JAVA_BOOLEAN(env->ExceptionOccurred());
+        return to_jboolean(!env->ExceptionOccurred());
     */
 
     static native void initState(long ptr, int id); /*
@@ -589,6 +591,10 @@ class LuaNatives {
         lua_pop(L, 1);
         if (lua_pushthread(L) == 1) {
             lua_pop(L, 1);
+            lua_newtable(L);
+            lua_setfield(L, LUA_REGISTRYINDEX, REFERENCES_FIELD);
+            lua_pushinteger(L, 1);
+            lua_setfield(L, LUA_REGISTRYINDEX, NEXTREF_FIELD);
             lua_pushstring(L, JAVA_STATE_INDEX);
         }
         lua_pushinteger(L, id);
@@ -612,12 +618,12 @@ class LuaNatives {
 
     static native boolean isInteger(long ptr, int index); /*
         lua_State* L = (lua_State*)ptr;
-        return JAVA_BOOLEAN(lua_isinteger(L, index));
+        return to_jboolean(lua_isinteger(L, index));
     */
 
     static native boolean toBoolean(long ptr, int index); /*
         lua_State* L = (lua_State*)ptr;
-        return JAVA_BOOLEAN(lua_toboolean(L, index));
+        return to_jboolean(lua_toboolean(L, index));
     */
 
     static native long toInteger(long ptr, int index); /*
@@ -704,20 +710,53 @@ class LuaNatives {
         lua_createtable(L, 0, size);
     */
 
-    static native int newRef(long ptr, int index); /*
+    static native int getReference(long ptr, int index); /*
         lua_State* L = (lua_State*)ptr;
-        lua_pushvalue(L, index);
-        return (jint)luaL_ref(L, LUA_REGISTRYINDEX);
+        int absindex = lua_absindex(L, index);
+        lua_getfield(L, LUA_REGISTRYINDEX, REFERENCES_FIELD);
+        int references = lua_absindex(L, -1);
+        lua_pushvalue(L, absindex);
+        lua_gettable(L, references);
+        int contains = !lua_isnil(L, -1);
+        int ref;
+        if (contains) {
+            ref = lua_tointeger(L, -1);
+        } else {
+            lua_getfield(L, LUA_REGISTRYINDEX, NEXTREF_FIELD);
+            ref = lua_tointeger(L, -1);
+            lua_pop(L, 1);
+
+            lua_pushvalue(L, absindex);
+            lua_seti(L, references, ref);
+
+            lua_pushvalue(L, absindex);
+            lua_pushinteger(L, ref);
+            lua_settable(L, references);
+
+            lua_pushinteger(L, ref + 1);
+            lua_setfield(L, LUA_REGISTRYINDEX, NEXTREF_FIELD);
+        }
+        lua_pop(L, 2);
+        return ref;
     */
 
-    static native void getRef(long ptr, int ref); /*
+    static native void fromReference(long ptr, int reference); /*
         lua_State* L = (lua_State*)ptr;
-        lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
+        lua_getfield(L, LUA_REGISTRYINDEX, REFERENCES_FIELD);
+        lua_geti(L, -1, reference);
+        lua_replace(L, -2);
     */
 
-    static native void deleteRef(long ptr, int ref); /*
+    static native void deleteReference(long ptr, int reference); /*
         lua_State* L = (lua_State*)ptr;
-        luaL_unref(L, LUA_REGISTRYINDEX, ref);
+        lua_getfield(L, LUA_REGISTRYINDEX, REFERENCES_FIELD);
+        int absindex = lua_absindex(L, -1);
+        lua_geti(L, absindex, reference);
+        lua_pushnil(L);
+        lua_settable(L, absindex);
+        lua_pushnil(L);
+        lua_seti(L, absindex, reference);
+        lua_pop(L, 1);
     */
 
     static native int getThreadId(long ptr, int index); /*
@@ -742,7 +781,7 @@ class LuaNatives {
             lua_pushcfunction(L, &new_index_wrapper);
             lua_setfield(L, -2, "__newindex");
         }
-        return JAVA_BOOLEAN(isNew);
+        return to_jboolean(isNew);
     */
 
     static native void setMetaMethod(long ptr, String name, int type, int returns); /*
@@ -796,7 +835,7 @@ class LuaNatives {
         lua_pushnil(L);
         int has_next = lua_next(L, -2);
         lua_pop(L, has_next ? 3 : 1);
-        return !JAVA_BOOLEAN(has_next);
+        return to_jboolean(!has_next);
     */
 
     static native boolean tableContainsKey(long ptr); /*
@@ -804,7 +843,7 @@ class LuaNatives {
         lua_gettable(L, -2);
         int contains = !lua_isnil(L, -1);
         lua_pop(L, 2);
-        return JAVA_BOOLEAN(contains);
+        return to_jboolean(contains);
     */
 
     static native boolean tableContainsValue(long ptr); /*
@@ -850,7 +889,7 @@ class LuaNatives {
 
     static native boolean tableNext(long ptr); /*
         lua_State* L = (lua_State*)ptr;
-        return JAVA_BOOLEAN(lua_next(L, -2));
+        return to_jboolean(lua_next(L, -2));
     */
 
     static native void openLib(long ptr, int id); /*
@@ -935,12 +974,12 @@ class LuaNatives {
 
     static native boolean isYieldable(long ptr); /*
         lua_State* L = (lua_State*)ptr;
-        return JAVA_BOOLEAN(lua_isyieldable(L));
+        return to_jboolean(lua_isyieldable(L));
     */
 
     static native boolean isSuspended(long ptr); /*
         lua_State* L = (lua_State*)ptr;
-        return JAVA_BOOLEAN(lua_status(L) == LUA_YIELD);
+        return to_jboolean(lua_status(L) == LUA_YIELD);
     */
 
     static native void yield(long ptr); /*

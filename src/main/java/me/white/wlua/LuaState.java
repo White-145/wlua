@@ -2,15 +2,16 @@ package me.white.wlua;
 
 import java.lang.ref.WeakReference;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class LuaState extends LuaValue implements AutoCloseable {
-    private Properties properties = new Properties();
+    private final Map<Integer, WeakReference<LuaValue.Ref>> aliveReferences = new ConcurrentHashMap<>();
+    private final List<LuaState> subThreads = new ArrayList<>();
+    private final Properties properties = new Properties();
+    private final LuaState mainThread;
+    private final int id;
     private boolean isClosed = false;
-    private int id;
-    private List<LuaState> subThreads = new ArrayList<>();
-    private Map<Integer, WeakReference<LuaValue.Ref>> aliveReferences = new HashMap<>();
-    private LuaState mainThread;
-    long ptr;
+    final long ptr;
 
     LuaState(long ptr, int stateId, LuaState mainThread) {
         if (ptr == 0) {
@@ -60,7 +61,7 @@ public final class LuaState extends LuaValue implements AutoCloseable {
 
     @SuppressWarnings("unchecked")
     <T extends Ref> T getReference(int index, RefValueProvider<T> provider) {
-        int reference = LuaNatives.newRef(ptr, index);
+        int reference = LuaNatives.getReference(ptr, index);
         if (mainThread.aliveReferences.containsKey(reference)) {
             return (T)mainThread.aliveReferences.get(reference).get();
         }
@@ -75,7 +76,7 @@ public final class LuaState extends LuaValue implements AutoCloseable {
 
     void cleanReference(int reference) {
         if (!isClosed() && mainThread.aliveReferences.containsKey(reference)) {
-            LuaNatives.deleteRef(ptr, reference);
+            LuaNatives.deleteReference(ptr, reference);
             mainThread.aliveReferences.remove(reference);
         }
     }
@@ -245,6 +246,12 @@ public final class LuaState extends LuaValue implements AutoCloseable {
                 LuaInstances.remove(thread.id);
             }
             subThreads.clear();
+            for (WeakReference<LuaValue.Ref> ref : aliveReferences.values()) {
+                LuaValue.Ref refValue = ref.get();
+                if (refValue != null) {
+                    refValue.unref();
+                }
+            }
             LuaNatives.closeState(ptr);
         } else {
             mainThread.subThreads.remove(this);

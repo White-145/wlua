@@ -116,7 +116,7 @@ public sealed abstract class LuaValue permits BooleanValue, FunctionLiteralValue
             if (!state.isSubThread(this.state)) {
                 throw new IllegalStateException("Cannot move references between threads.");
             }
-            LuaNatives.getRef(state.ptr, reference);
+            LuaNatives.fromReference(state.ptr, reference);
         }
 
         @Override

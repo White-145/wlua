@@ -1,11 +1,13 @@
 package me.white.wlua;
 
+import java.lang.reflect.Field;
 import java.util.*;
 
 public class TestMain {
     public static void main(String[] args) {
         testState();
         testProgram();
+        testReferences();
         testValues();
         testFunction();
         testTable();
@@ -105,7 +107,34 @@ public class TestMain {
             assert value1.getNumber() == 5.5;
             value = LuaValue.nil();
             assert value.isNil();
+            state.run("""
+                    a = function()
+                        return nil
+                    end
+                    """);
+            LuaValue ref1 = state.getGlobal("a");
+            LuaValue ref2 = state.getGlobal("a");
+            assert ref1.equals(ref2);
+            assert ref1 == ref2;
         }
+    }
+
+    public static void testReferences() {
+        LuaState state = new LuaState();
+        Map<?, ?> references;
+        try {
+            Field field = LuaState.class.getDeclaredField("aliveReferences");
+            field.setAccessible(true);
+            references = (Map<?, ?>)field.get(state);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+        state.load("a=nil");
+        {
+            LuaValue a = state.getGlobalTable();
+        }
+        state.close();
+        assert references.isEmpty();
     }
 
     public static void testFunction() {
