@@ -86,4 +86,18 @@ public enum ValueType {
         }
         return null;
     }
+
+    @Override
+    public String toString() {
+        return switch (this) {
+            case NIL -> "nil";
+            case TABLE -> "table";
+            case NUMBER -> "number";
+            case STRING -> "string";
+            case THREAD -> "thread";
+            case BOOLEAN -> "boolean";
+            case FUNCTION -> "function";
+            case USER_DATA -> "userdata";
+        };
+    }
 }

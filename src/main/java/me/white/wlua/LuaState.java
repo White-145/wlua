@@ -54,7 +54,7 @@ public final class LuaState extends LuaValue implements AutoCloseable {
         checkIsAlive();
         ValueType valueType = ValueType.fromId(LuaNatives.getType(ptr, index));
         if (valueType == null) {
-            return nil();
+            return LuaValue.nil();
         }
         return valueType.fromStack(this, index);
     }

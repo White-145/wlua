@@ -61,8 +61,13 @@ public class VarArg {
         return value;
     }
 
-    public UserData checkUserData(int i, Class<? extends UserData> clazz, String function, String details) throws LuaException {
-        return (UserData)check(i, value -> clazz.isAssignableFrom(value.getClass()), function, details);
+    @SuppressWarnings("unchecked")
+    public <T extends UserData> T checkUserData(int i, Class<T> clazz, String function, String details) throws LuaException {
+        return (T)check(i, value -> clazz.isAssignableFrom(value.getClass()), function, details);
+    }
+
+    public LuaValue checkValue(int i, ValueType type, String function) {
+        return check(i, value -> value.getType() == type, function, "expected " + type);
     }
 
     static VarArg collect(LuaState state, int amount) {
