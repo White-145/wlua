@@ -21,18 +21,13 @@ public final class StringValue extends LuaValue {
     }
 
     @Override
-    public double getNumber() {
+    public double toNumber() {
         return Double.parseDouble(value);
     }
 
     @Override
-    public long getInteger() {
+    public long toInteger() {
         return (long)Double.parseDouble(value);
-    }
-
-    @Override
-    public String getString() {
-        return value;
     }
 
     @Override

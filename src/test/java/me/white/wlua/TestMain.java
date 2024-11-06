@@ -82,17 +82,17 @@ public class TestMain {
         try (LuaState state = new LuaState()) {
             LuaValue value = LuaValue.of(false);
             assert !value.isNil();
-            assert !value.getBoolean();
+            assert !value.toBoolean();
             assert !value.isNumber();
-            assert value.getString().equals("false");
+            assert value.toString().equals("false");
             state.setGlobal("a", value);
             LuaValue value1 = state.getGlobal("a");
             assert value1.equals(value);
             assert !value1.isNil();
-            assert !value1.getBoolean();
+            assert !value1.toBoolean();
             value = LuaValue.of(10);
             assert value.isNumber();
-            assert value.getNumber() == 10.0;
+            assert value.toNumber() == 10.0;
             state.setGlobal("a", value);
             value1 = state.getGlobal("a");
             assert value.equals(value1);
@@ -106,7 +106,7 @@ public class TestMain {
             value1 = state.getGlobal("a");
             assert value1 instanceof StringValue;
             assert value1.isNumber();
-            assert value1.getNumber() == 5.5;
+            assert value1.toNumber() == 5.5;
             value = LuaValue.nil();
             assert value.isNil();
             state.run("""
@@ -146,11 +146,11 @@ public class TestMain {
                 assert lua == state;
                 LuaValue a = args.get(0);
                 assert a instanceof IntegerValue;
-                assert a.getInteger() == 4;
+                assert a.toInteger() == 4;
                 LuaValue b = args.get(1);
                 assert b instanceof NumberValue && !(b instanceof IntegerValue);
-                assert b.getNumber() == 3.5;
-                LuaValue result = LuaValue.of(a.getNumber() * b.getNumber());
+                assert b.toNumber() == 3.5;
+                LuaValue result = LuaValue.of(a.toNumber() * b.toNumber());
                 return new VarArg(result);
             }));
             state.run("a = b(4, 3.5)");

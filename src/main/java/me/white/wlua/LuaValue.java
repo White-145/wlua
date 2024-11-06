@@ -59,20 +59,16 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaState,
         return false;
     }
 
-    public boolean getBoolean() {
+    public boolean toBoolean() {
         return true;
     }
 
-    public double getNumber() {
+    public double toNumber() {
         throw new UnsupportedOperationException();
     }
 
-    public long getInteger() {
+    public long toInteger() {
         throw new UnsupportedOperationException();
-    }
-
-    public String getString() {
-        return toString();
     }
 
     public abstract ValueType getType();

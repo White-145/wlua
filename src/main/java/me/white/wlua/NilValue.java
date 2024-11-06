@@ -11,7 +11,7 @@ public final class NilValue extends LuaValue {
     }
 
     @Override
-    public boolean getBoolean() {
+    public boolean toBoolean() {
         return false;
     }
 

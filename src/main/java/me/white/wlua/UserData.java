@@ -40,23 +40,18 @@ public abstract non-sealed class UserData extends LuaValue {
     }
 
     @Override
-    public final boolean getBoolean() {
-        return super.getBoolean();
+    public final boolean toBoolean() {
+        return super.toBoolean();
     }
 
     @Override
-    public final double getNumber() {
-        return super.getNumber();
+    public final double toNumber() {
+        return super.toNumber();
     }
 
     @Override
-    public final long getInteger() {
-        return super.getInteger();
-    }
-
-    @Override
-    public final String getString() {
-        return super.getString();
+    public final long toInteger() {
+        return super.toInteger();
     }
 
     @Override

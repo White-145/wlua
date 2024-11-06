@@ -10,7 +10,7 @@ public final class BooleanValue extends LuaValue {
     }
 
     @Override
-    public boolean getBoolean() {
+    public boolean toBoolean() {
         return value;
     }
 

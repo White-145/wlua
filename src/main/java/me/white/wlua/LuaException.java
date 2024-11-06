@@ -16,7 +16,7 @@ public class LuaException extends RuntimeException {
             case LuaNatives.ERRERR -> "error";
             default -> "unknown";
         };
-        String msg = LuaValue.from(state, -1).getString();
+        String msg = LuaValue.from(state, -1).toString();
         state.pop(1);
         throw new LuaException(name + ": " + msg);
     }
