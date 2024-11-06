@@ -8,6 +8,16 @@ public sealed class NumberValue extends LuaValue permits IntegerValue {
     }
 
     @Override
+    void push(LuaState state) {
+        LuaNatives.pushNumber(state.ptr, value);
+    }
+
+    @Override
+    public ValueType getType() {
+        return ValueType.NUMBER;
+    }
+
+    @Override
     public boolean isNumber() {
         return true;
     }
@@ -20,16 +30,6 @@ public sealed class NumberValue extends LuaValue permits IntegerValue {
     @Override
     public long toInteger() {
         return (long)value;
-    }
-
-    @Override
-    public ValueType getType() {
-        return ValueType.NUMBER;
-    }
-
-    @Override
-    void push(LuaState state) {
-        LuaNatives.pushNumber(state.ptr, value);
     }
 
     @Override

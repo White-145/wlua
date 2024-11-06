@@ -3,6 +3,7 @@ package me.white.wlua;
 import java.util.*;
 
 public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaState, RefValue, NilValue, NumberValue, StringValue, UserData {
+    // TODO unwind some of those fancy wrapper functions? like whats the point actually
     static LuaValue from(LuaState state, int index) {
         return state.fromStack(index);
     }
@@ -23,6 +24,10 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaState,
         return new StringValue(value);
     }
 
+    public static NilValue nil() {
+        return NilValue.INSTANCE;
+    }
+
     public static FunctionValue reference(LuaState state, JavaFunction value) {
         return state.reference(value);
     }
@@ -41,10 +46,6 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaState,
 
     public static IntegerValue index(int index) {
         return new IntegerValue(index + 1);
-    }
-
-    public static NilValue nil() {
-        return NilValue.INSTANCE;
     }
 
     public static boolean isNil(Object value) {
@@ -71,7 +72,7 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaState,
         throw new UnsupportedOperationException();
     }
 
-    public abstract ValueType getType();
-
     abstract void push(LuaState state);
+
+    public abstract ValueType getType();
 }

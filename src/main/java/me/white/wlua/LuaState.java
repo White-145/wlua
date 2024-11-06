@@ -109,7 +109,7 @@ public final class LuaState extends LuaValue implements AutoCloseable {
     }
 
     public void openLib(Library lib) {
-        lib.open(this);
+        LuaNatives.openLib(ptr, lib.id);
     }
 
     public TableValue getGlobalTable() {
@@ -243,19 +243,6 @@ public final class LuaState extends LuaValue implements AutoCloseable {
     }
 
     @Override
-    public ValueType getType() {
-        return ValueType.THREAD;
-    }
-
-    @Override
-    void push(LuaState state) {
-        if (!state.isSubThread(this)) {
-            throw new IllegalStateException("Could not push thread to the separate lua state.");
-        }
-        LuaNatives.pushThread(ptr);
-    }
-
-    @Override
     public void close() {
         if (isClosed()) {
             return;
@@ -278,6 +265,19 @@ public final class LuaState extends LuaValue implements AutoCloseable {
             LuaNatives.removeState(ptr);
         }
         isClosed = true;
+    }
+
+    @Override
+    void push(LuaState state) {
+        if (!state.isSubThread(this)) {
+            throw new IllegalStateException("Could not push thread to the separate lua state.");
+        }
+        LuaNatives.pushThread(ptr);
+    }
+
+    @Override
+    public ValueType getType() {
+        return ValueType.THREAD;
     }
 
     @Override
@@ -313,10 +313,6 @@ public final class LuaState extends LuaValue implements AutoCloseable {
 
         Library(int id) {
             this.id = id;
-        }
-
-        void open(LuaState state) {
-            LuaNatives.openLib(state.ptr, id);
         }
     }
 }

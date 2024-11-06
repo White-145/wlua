@@ -6,13 +6,8 @@ public final class NilValue extends LuaValue {
     private NilValue() { }
 
     @Override
-    public boolean isNil() {
-        return true;
-    }
-
-    @Override
-    public boolean toBoolean() {
-        return false;
+    void push(LuaState state) {
+        LuaNatives.pushNil(state.ptr);
     }
 
     @Override
@@ -21,8 +16,13 @@ public final class NilValue extends LuaValue {
     }
 
     @Override
-    void push(LuaState state) {
-        LuaNatives.pushNil(state.ptr);
+    public boolean isNil() {
+        return true;
+    }
+
+    @Override
+    public boolean toBoolean() {
+        return false;
     }
 
     @Override

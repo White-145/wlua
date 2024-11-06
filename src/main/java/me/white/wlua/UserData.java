@@ -28,6 +28,19 @@ public abstract non-sealed class UserData extends LuaValue {
         fieldDatas.remove(clazz);
     }
 
+    @Override
+    final void push(LuaState state) {
+        FieldData fieldData = getFieldData(getClass());
+        LuaNatives.newUserData(state.ptr, this);
+        fieldData.pushMetaTable(state, name);
+        LuaNatives.setMetaTable(state.ptr);
+    }
+
+    @Override
+    public final ValueType getType() {
+        return ValueType.USER_DATA;
+    }
+
     // make LuaValue methods final so that they cannot be overriden by user
     @Override
     public final boolean isNil() {
@@ -52,19 +65,6 @@ public abstract non-sealed class UserData extends LuaValue {
     @Override
     public final long toInteger() {
         return super.toInteger();
-    }
-
-    @Override
-    public final ValueType getType() {
-        return ValueType.USER_DATA;
-    }
-
-    @Override
-    final void push(LuaState state) {
-        FieldData fieldData = getFieldData(getClass());
-        LuaNatives.newUserData(state.ptr, this);
-        fieldData.pushMetaTable(state, name);
-        LuaNatives.setMetaTable(state.ptr);
     }
 
     static class FieldData {

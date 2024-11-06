@@ -13,13 +13,13 @@ public final class IntegerValue extends NumberValue {
     }
 
     @Override
-    public long toInteger() {
-        return value;
+    void push(LuaState state) {
+        LuaNatives.pushInteger(state.ptr, value);
     }
 
     @Override
-    void push(LuaState state) {
-        LuaNatives.pushInteger(state.ptr, value);
+    public long toInteger() {
+        return value;
     }
 
     @Override

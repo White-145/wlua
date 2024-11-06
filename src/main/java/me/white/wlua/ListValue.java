@@ -266,13 +266,13 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
     }
 
     @Override
-    public ValueType getType() {
-        return ValueType.TABLE;
+    void push(LuaState state) {
+        table.push(state);
     }
 
     @Override
-    void push(LuaState state) {
-        table.push(state);
+    public ValueType getType() {
+        return ValueType.TABLE;
     }
 
     @Override

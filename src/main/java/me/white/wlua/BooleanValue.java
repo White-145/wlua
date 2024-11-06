@@ -10,8 +10,8 @@ public final class BooleanValue extends LuaValue {
     }
 
     @Override
-    public boolean toBoolean() {
-        return value;
+    void push(LuaState state) {
+        LuaNatives.pushBoolean(state.ptr, value);
     }
 
     @Override
@@ -20,8 +20,8 @@ public final class BooleanValue extends LuaValue {
     }
 
     @Override
-    void push(LuaState state) {
-        LuaNatives.pushBoolean(state.ptr, value);
+    public boolean toBoolean() {
+        return value;
     }
 
     @Override

@@ -22,6 +22,16 @@ public class VarArg {
         this(values.toArray(new LuaValue[0]));
     }
 
+    static VarArg collect(LuaState state, int amount) {
+        state.checkIsAlive();
+        LuaValue[] values = new LuaValue[amount];
+        for (int i = 0; i < amount; ++i) {
+            values[i] = LuaValue.from(state, i - amount);
+        }
+        state.pop(amount);
+        return new VarArg(values);
+    }
+
     public static LuaValue[] conform(LuaValue[] values, int size) {
         if (size == values.length) {
             return values;
@@ -32,6 +42,13 @@ public class VarArg {
             conformed[i] = LuaValue.nil();
         }
         return conformed;
+    }
+
+    void push(LuaState state) {
+        state.checkIsAlive();
+        for (LuaValue value : values) {
+            state.pushValue(value);
+        }
     }
 
     public LuaValue[] getValues() {
@@ -68,22 +85,5 @@ public class VarArg {
 
     public LuaValue checkValue(int i, ValueType type, String function) {
         return check(i, value -> value.getType() == type, function, "expected " + type);
-    }
-
-    static VarArg collect(LuaState state, int amount) {
-        state.checkIsAlive();
-        LuaValue[] values = new LuaValue[amount];
-        for (int i = 0; i < amount; ++i) {
-            values[i] = LuaValue.from(state, i - amount);
-        }
-        state.pop(amount);
-        return new VarArg(values);
-    }
-
-    void push(LuaState state) {
-        state.checkIsAlive();
-        for (LuaValue value : values) {
-            state.pushValue(value);
-        }
     }
 }
