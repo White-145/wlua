@@ -5,7 +5,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class LuaState extends LuaValue implements AutoCloseable {
-    private final Map<Integer, WeakReference<LuaValue.Ref>> aliveReferences = new ConcurrentHashMap<>();
+    private final Map<Integer, WeakReference<RefValue>> aliveReferences = new ConcurrentHashMap<>();
     private final List<LuaState> subThreads = new ArrayList<>();
     private final Properties properties = new Properties();
     private final LuaState mainThread;
@@ -60,7 +60,7 @@ public final class LuaState extends LuaValue implements AutoCloseable {
     }
 
     @SuppressWarnings("unchecked")
-    <T extends Ref> T getReference(int index, RefValueProvider<T> provider) {
+    <T extends RefValue> T getReference(int index, RefValue.RefValueProvider<T> provider) {
         int reference = LuaNatives.getReference(ptr, index);
         if (mainThread.aliveReferences.containsKey(reference)) {
             return (T)mainThread.aliveReferences.get(reference).get();
@@ -112,12 +112,31 @@ public final class LuaState extends LuaValue implements AutoCloseable {
         lib.open(this);
     }
 
-    public TableRefValue getGlobalTable() {
+    public TableValue getGlobalTable() {
         checkIsAlive();
         LuaNatives.pushGlobalTable(ptr);
         LuaValue ref = LuaValue.from(this, -1);
         pop(1);
-        return (TableRefValue)ref;
+        return (TableValue)ref;
+    }
+
+    public FunctionValue reference(JavaFunction function) {
+        LuaNatives.pushFunction(ptr, function);
+        FunctionValue value = getReference(-1, FunctionValue::new);
+        pop(1);
+        return value;
+    }
+
+    public TableValue reference(Map<LuaValue, LuaValue> table) {
+        LuaNatives.newTable(ptr, table.size());
+        for (Map.Entry<LuaValue, LuaValue> entry : table.entrySet()) {
+            pushValue(entry.getKey());
+            pushValue(entry.getValue());
+            LuaNatives.tableSet(ptr);
+        }
+        TableValue value = getReference(-1, TableValue::new);
+        pop(1);
+        return value;
     }
 
     public void setGlobal(String name, LuaValue value) {
@@ -140,7 +159,7 @@ public final class LuaState extends LuaValue implements AutoCloseable {
         return value;
     }
 
-    public FunctionRefValue load(String chunk, String name) {
+    public FunctionValue load(String chunk, String name) {
         Objects.requireNonNull(chunk);
         Objects.requireNonNull(name);
         checkIsAlive();
@@ -148,10 +167,10 @@ public final class LuaState extends LuaValue implements AutoCloseable {
         LuaException.checkError(code, this);
         LuaValue value = LuaValue.from(this, -1);
         pop(1);
-        return (FunctionRefValue)value;
+        return (FunctionValue)value;
     }
 
-    public FunctionRefValue load(String chunk) {
+    public FunctionValue load(String chunk) {
         return load(chunk, chunk);
     }
 
@@ -159,8 +178,9 @@ public final class LuaState extends LuaValue implements AutoCloseable {
         Objects.requireNonNull(chunk);
         Objects.requireNonNull(args);
         checkIsAlive();
+        // TODO remove this calculation. seems like lua knows what its doing
         int top = LuaNatives.getTop(ptr);
-        pushValue((LuaValue)chunk);
+        pushValue(chunk);
         args.push(this);
         int code = LuaNatives.protectedCall(ptr, args.size(), LuaNatives.MULTRET);
         LuaException.checkError(code, this);
@@ -177,7 +197,7 @@ public final class LuaState extends LuaValue implements AutoCloseable {
         checkIsAlive();
         int top = LuaNatives.getTop(ptr);
         if (chunk != null) {
-            pushValue((LuaValue)chunk);
+            pushValue(chunk);
         } else if (!isSuspended()) {
             throw new IllegalStateException("Cannot resume not suspended state.");
         }
@@ -246,8 +266,8 @@ public final class LuaState extends LuaValue implements AutoCloseable {
                 LuaInstances.remove(thread.id);
             }
             subThreads.clear();
-            for (WeakReference<LuaValue.Ref> ref : aliveReferences.values()) {
-                LuaValue.Ref refValue = ref.get();
+            for (WeakReference<RefValue> ref : aliveReferences.values()) {
+                RefValue refValue = ref.get();
                 if (refValue != null) {
                     refValue.unref();
                 }

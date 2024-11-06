@@ -73,13 +73,13 @@ class LuaNatives {
             return error(callerPtr, "error getting lua state");
         }
         state.checkIsAlive();
-        if (!(function instanceof FunctionLiteralValue.Function)) {
+        if (!(function instanceof JavaFunction)) {
             return error(callerPtr, "error invoking java function");
         }
         VarArg args = VarArg.collect(state, params);
         VarArg results;
         try {
-            results = ((FunctionLiteralValue.Function)function).run(state, args);
+            results = ((JavaFunction)function).run(state, args);
         } catch (LuaException e) {
             return error(callerPtr, e.getMessage());
         }
@@ -217,7 +217,7 @@ class LuaNatives {
             }
             if (fieldData.functions.containsKey(name)) {
                 Method method = fieldData.functions.get(name);
-                state.pushValue(LuaValue.of((lua, args) -> {
+                state.pushValue(LuaValue.reference(state, (lua, args) -> {
                     Object results;
                     try {
                         results = method.invoke(userdata, lua, args);
@@ -686,7 +686,7 @@ class LuaNatives {
         lua_pushthread(L);
     */
 
-    static native void pushFunction(long ptr, FunctionLiteralValue.Function function); /*
+    static native void pushFunction(long ptr, JavaFunction function); /*
         lua_State* L = (lua_State*)ptr;
         jobject global_ref = env->NewGlobalRef(function);
         if (env->ExceptionOccurred()) {

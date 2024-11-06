@@ -1,11 +1,20 @@
 package me.white.wlua;
 
-// interface meant to unite literal and reference function values
-public sealed interface FunctionValue permits FunctionLiteralValue, FunctionRefValue {
-    VarArg run(LuaState state, VarArg args);
+public final class FunctionValue extends RefValue {
+    FunctionValue(LuaState state, int reference) {
+        super(state, reference);
+    }
 
-    @FunctionalInterface
-    interface Function {
-        VarArg run(LuaState state, VarArg args) throws LuaException;
+    @Override
+    public ValueType getType() {
+        return ValueType.FUNCTION;
+    }
+
+    public VarArg run(VarArg args) {
+        checkIsAlive();
+        if (!state.isSubThread(this.state)) {
+            throw new IllegalStateException("Could not move reference between states.");
+        }
+        return state.run(this, args);
     }
 }

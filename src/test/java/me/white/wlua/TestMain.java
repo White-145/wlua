@@ -1,5 +1,7 @@
 package me.white.wlua;
 
+import me.white.wlua.annotation.*;
+
 import java.lang.reflect.Field;
 import java.util.*;
 
@@ -63,10 +65,10 @@ public class TestMain {
             LuaValue global = state.getGlobal("a");
             assert global.equals(LuaValue.of(120));
             LuaValue func = state.getGlobal("b");
-            assert func instanceof FunctionRefValue;
+            assert func instanceof FunctionValue;
             state.setGlobal("c", func);
             state.run("a = c(6)");
-            assert ((FunctionRefValue)func).run(state, new VarArg(LuaValue.of(3))).get(0).equals(LuaValue.of(6));
+            assert ((FunctionValue)func).run(new VarArg(LuaValue.of(3))).get(0).equals(LuaValue.of(6));
             assert state.getGlobal("a").equals(LuaValue.of(720));
             assert state.getGlobalTable().get(LuaValue.of("a")).equals(state.getGlobal("a"));
             state.getGlobalTable().put(LuaValue.of("b"), LuaValue.of(890));
@@ -139,7 +141,7 @@ public class TestMain {
 
     public static void testFunction() {
         try (LuaState state = new LuaState()) {
-            state.setGlobal("b", LuaValue.of((lua, args) -> {
+            state.setGlobal("b", LuaValue.reference(state, (lua, args) -> {
                 assert args.size() == 2;
                 assert lua == state;
                 LuaValue a = args.get(0);
@@ -158,7 +160,7 @@ public class TestMain {
 
     public static void testTable() {
         try (LuaState state = new LuaState()) {
-            TableRefValue table = LuaValue.of(Map.of(LuaValue.of("foo"), LuaValue.of(3), LuaValue.of("bar"), LuaValue.of(5), LuaValue.of("baz"), LuaValue.of(15))).toReference(state);
+            TableValue table = LuaValue.reference(state, Map.of(LuaValue.of("foo"), LuaValue.of(3), LuaValue.of("bar"), LuaValue.of(5), LuaValue.of("baz"), LuaValue.of(15)));
             assert table.size() == 3;
             assert table.containsKey(LuaValue.of("foo"));
             assert !table.containsKey(LuaValue.of(5));
@@ -183,7 +185,7 @@ public class TestMain {
             assert table.keySet().equals(keySet);
             Set<LuaValue> values = Set.of(LuaValue.of(3), LuaValue.of(6), LuaValue.of(100), LuaValue.of(200));
             assert table.values().equals(values);
-            assert table.toLiteral().equals(Map.of(LuaValue.of("foo"), LuaValue.of(3), LuaValue.of("bar"), LuaValue.of(6), LuaValue.of("zank"), LuaValue.of(100), LuaValue.of("circ"), LuaValue.of(200), LuaValue.of("poil"), LuaValue.of(6)));
+            assert table.toMap().equals(Map.of(LuaValue.of("foo"), LuaValue.of(3), LuaValue.of("bar"), LuaValue.of(6), LuaValue.of("zank"), LuaValue.of(100), LuaValue.of("circ"), LuaValue.of(200), LuaValue.of("poil"), LuaValue.of(6)));
             for (Map.Entry<LuaValue, LuaValue> entry : table.entrySet()) {
                 assert keySet.contains(entry.getKey());
                 assert values.contains(entry.getValue());
@@ -218,96 +220,91 @@ public class TestMain {
         }
     }
 
-    private static void testList(TableValue table, ListValue list, LuaState state) {
-        assert list.size() == 2;
-        assert list.get(0).equals(LuaValue.of(3));
-        assert list.get(1).equals(LuaValue.of(10));
-        assert list.get(3) == null;
-        assert Arrays.equals(list.toArray(), new LuaValue[]{ LuaValue.of(3), LuaValue.of(10) });
-        assert !list.contains(LuaValue.of(93));
-        assert list.contains(LuaValue.of(3));
-        list.add(LuaValue.of(31));
-        assert list.size() == 4;
-        assert list.get(2).equals(LuaValue.of(31));
-        assert list.get(3).equals(LuaValue.of(94));
-        assert table.containsKey(LuaValue.index(2));
-        boolean bl = list.remove(LuaValue.of(0));
-        assert !bl;
-        bl = list.remove(LuaValue.of(3));
-        assert bl;
-        assert !list.isEmpty();
-        assert list.size() == 3;
-        assert table.get(LuaValue.index(3)) == null;
-        assert list.get(1).equals(LuaValue.of(31));
-        list.set(0, LuaValue.of(-1));
-        assert list.getFirst().equals(LuaValue.of(-1));
-        assert list.size() == 3;
-        list.addFirst(LuaValue.of(8));
-        assert Arrays.equals(list.toArray(new LuaValue[6]), new LuaValue[]{ LuaValue.of(8), LuaValue.of(-1), LuaValue.of(31), LuaValue.of(94), null, null });
-        list.remove(2);
-        assert list.size() == 3;
-        assert list.get(2).equals(LuaValue.of(94));
-        assert list.indexOf(LuaValue.of(-1)) == 1;
-        int i = list.indexOf(LuaValue.of(7));
-        assert i == -1;
-        assert list.lastIndexOf(LuaValue.of(22)) == -1;
-        List<LuaValue> sup = new ArrayList<>(List.of(LuaValue.of(-1), LuaValue.of(94)));
-        assert list.containsAll(sup);
-        sup.add(LuaValue.of(7));
-        assert !list.containsAll(sup);
-        list.addAll(sup);
-        assert Arrays.equals(list.toArray(), new LuaValue[]{ LuaValue.of(8), LuaValue.of(-1), LuaValue.of(94), LuaValue.of(-1), LuaValue.of(94), LuaValue.of(7) });
-        list.retainAll(sup);
-        assert Arrays.equals(list.toArray(), new LuaValue[]{ LuaValue.of(-1), LuaValue.of(94), LuaValue.of(-1), LuaValue.of(94), LuaValue.of(7) });
-        assert list.indexOf(LuaValue.of(-1)) == 0;
-        List<LuaValue> hum = new ArrayList<>(List.of(LuaValue.of(-1), LuaValue.of(7)));
-        list.removeAll(hum);
-        assert Arrays.equals(list.toArray(), new LuaValue[]{ LuaValue.of(94), LuaValue.of(94) });
-        assert list.lastIndexOf(LuaValue.of(94)) == 1;
-        int times = 0;
-        for (LuaValue value : list) {
-            assert value.equals(LuaValue.of(94));
-            times += 1;
-        }
-        assert times == 2;
-        Iterator<LuaValue> iterator = list.iterator();
-        while (iterator.hasNext()) {
-            LuaValue value = iterator.next();
-            iterator.remove();
-        }
-        assert list.isEmpty();
-        list.add(LuaValue.of(-100));
-        list.add(LuaValue.of(-99));
-        list.add(LuaValue.of(-97));
-        list.add(LuaValue.of(-96));
-        ListIterator<LuaValue> listIterator = list.listIterator(1);
-        assert listIterator.hasPrevious();
-        assert listIterator.hasNext();
-        LuaValue previous = listIterator.previous();
-        assert previous.equals(LuaValue.of(-100));
-        assert listIterator.nextIndex() == 0;
-        listIterator.remove();
-        assert listIterator.nextIndex() == 0;
-        listIterator.next();
-        listIterator.next();
-        assert listIterator.nextIndex() == 2;
-        listIterator.add(LuaValue.of(-98));
-        assert listIterator.nextIndex() == 3;
-        previous = listIterator.previous();
-        assert previous.equals(LuaValue.of(-98));
-        list.clear();
-        assert list.isEmpty();
-        assert table.get(LuaValue.of("foo")).equals(LuaValue.of(7));
-        assert table.get(LuaValue.of("bar")).equals(LuaValue.of(22));
-    }
-
     public static void testList() {
         try (LuaState state = new LuaState()) {
-            TableLiteralValue table = LuaValue.of(new HashMap<>(Map.of(LuaValue.of("foo"), LuaValue.of(7), LuaValue.of("bar"), LuaValue.of(22), LuaValue.index(0), LuaValue.of(3), LuaValue.index(1), LuaValue.of(10), LuaValue.index(3), LuaValue.of(94))));
-            TableRefValue ref = table.toReference(state);
+            TableValue table = LuaValue.reference(state, new HashMap<>(Map.of(LuaValue.of("foo"), LuaValue.of(7), LuaValue.of("bar"), LuaValue.of(22), LuaValue.index(0), LuaValue.of(3), LuaValue.index(1), LuaValue.of(10), LuaValue.index(3), LuaValue.of(94))));
             assert table.getList().getTable() == table;
-            testList(table, table.getList(), state);
-            testList(ref, ref.getList(), state);
+            ListValue list = table.getList();
+            assert list.size() == 2;
+            assert list.get(0).equals(LuaValue.of(3));
+            assert list.get(1).equals(LuaValue.of(10));
+            assert list.get(3) == null;
+            assert Arrays.equals(list.toArray(), new LuaValue[]{ LuaValue.of(3), LuaValue.of(10) });
+            assert !list.contains(LuaValue.of(93));
+            assert list.contains(LuaValue.of(3));
+            list.add(LuaValue.of(31));
+            assert list.size() == 4;
+            assert list.get(2).equals(LuaValue.of(31));
+            assert list.get(3).equals(LuaValue.of(94));
+            assert table.containsKey(LuaValue.index(2));
+            boolean bl = list.remove(LuaValue.of(0));
+            assert !bl;
+            bl = list.remove(LuaValue.of(3));
+            assert bl;
+            assert !list.isEmpty();
+            assert list.size() == 3;
+            assert table.get(LuaValue.index(3)) == null;
+            assert list.get(1).equals(LuaValue.of(31));
+            list.set(0, LuaValue.of(-1));
+            assert list.getFirst().equals(LuaValue.of(-1));
+            assert list.size() == 3;
+            list.addFirst(LuaValue.of(8));
+            assert Arrays.equals(list.toArray(new LuaValue[6]), new LuaValue[]{ LuaValue.of(8), LuaValue.of(-1), LuaValue.of(31), LuaValue.of(94), null, null });
+            list.remove(2);
+            assert list.size() == 3;
+            assert list.get(2).equals(LuaValue.of(94));
+            assert list.indexOf(LuaValue.of(-1)) == 1;
+            int i = list.indexOf(LuaValue.of(7));
+            assert i == -1;
+            assert list.lastIndexOf(LuaValue.of(22)) == -1;
+            List<LuaValue> sup = new ArrayList<>(List.of(LuaValue.of(-1), LuaValue.of(94)));
+            assert list.containsAll(sup);
+            sup.add(LuaValue.of(7));
+            assert !list.containsAll(sup);
+            list.addAll(sup);
+            assert Arrays.equals(list.toArray(), new LuaValue[]{ LuaValue.of(8), LuaValue.of(-1), LuaValue.of(94), LuaValue.of(-1), LuaValue.of(94), LuaValue.of(7) });
+            list.retainAll(sup);
+            assert Arrays.equals(list.toArray(), new LuaValue[]{ LuaValue.of(-1), LuaValue.of(94), LuaValue.of(-1), LuaValue.of(94), LuaValue.of(7) });
+            assert list.indexOf(LuaValue.of(-1)) == 0;
+            List<LuaValue> hum = new ArrayList<>(List.of(LuaValue.of(-1), LuaValue.of(7)));
+            list.removeAll(hum);
+            assert Arrays.equals(list.toArray(), new LuaValue[]{ LuaValue.of(94), LuaValue.of(94) });
+            assert list.lastIndexOf(LuaValue.of(94)) == 1;
+            int times = 0;
+            for (LuaValue value : list) {
+                assert value.equals(LuaValue.of(94));
+                times += 1;
+            }
+            assert times == 2;
+            Iterator<LuaValue> iterator = list.iterator();
+            while (iterator.hasNext()) {
+                LuaValue value = iterator.next();
+                iterator.remove();
+            }
+            assert list.isEmpty();
+            list.add(LuaValue.of(-100));
+            list.add(LuaValue.of(-99));
+            list.add(LuaValue.of(-97));
+            list.add(LuaValue.of(-96));
+            ListIterator<LuaValue> listIterator = list.listIterator(1);
+            assert listIterator.hasPrevious();
+            assert listIterator.hasNext();
+            LuaValue previous = listIterator.previous();
+            assert previous.equals(LuaValue.of(-100));
+            assert listIterator.nextIndex() == 0;
+            listIterator.remove();
+            assert listIterator.nextIndex() == 0;
+            listIterator.next();
+            listIterator.next();
+            assert listIterator.nextIndex() == 2;
+            listIterator.add(LuaValue.of(-98));
+            assert listIterator.nextIndex() == 3;
+            previous = listIterator.previous();
+            assert previous.equals(LuaValue.of(-98));
+            list.clear();
+            assert list.isEmpty();
+            assert table.get(LuaValue.of("foo")).equals(LuaValue.of(7));
+            assert table.get(LuaValue.of("bar")).equals(LuaValue.of(22));
         }
     }
 
@@ -382,7 +379,7 @@ public class TestMain {
 
     public static void testCoroutinesAndThreads() {
         try (LuaState state = new LuaState()) {
-            state.setGlobal("a", LuaValue.of((lua, args) -> {
+            state.setGlobal("a", LuaValue.reference(state, (lua, args) -> {
                 assert lua.isYieldable();
                 return lua.yield();
             }));

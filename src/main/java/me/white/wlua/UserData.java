@@ -1,5 +1,7 @@
 package me.white.wlua;
 
+import me.white.wlua.annotation.*;
+
 import java.lang.reflect.*;
 import java.util.*;
 

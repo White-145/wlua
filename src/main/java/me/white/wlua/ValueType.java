@@ -31,13 +31,13 @@ public enum ValueType {
     TABLE(LuaNatives.TTABLE, TableValue.class) {
         @Override
         LuaValue fromStack(LuaState state, int index) {
-            return state.getReference(index, TableRefValue::new);
+            return state.getReference(index, TableValue::new);
         }
     },
     FUNCTION(LuaNatives.TFUNCTION, FunctionValue.class) {
         @Override
         LuaValue fromStack(LuaState state, int index) {
-            return state.getReference(index, FunctionRefValue::new);
+            return state.getReference(index, FunctionValue::new);
         }
     },
     USER_DATA(LuaNatives.TUSERDATA, UserData.class) {
