@@ -4,7 +4,8 @@ import java.util.Collection;
 import java.util.function.Predicate;
 
 public class VarArg {
-    private LuaValue[] values;
+    private static final VarArg EMPTY = new VarArg();
+    private final LuaValue[] values;
 
     public VarArg(LuaValue ...values) {
         int lastI = 0;
@@ -22,13 +23,13 @@ public class VarArg {
         this(values.toArray(new LuaValue[0]));
     }
 
-    static VarArg collect(LuaState state, int amount) {
-        state.checkIsAlive();
+    static VarArg collect(LuaThread thread, int amount) {
+        thread.checkIsAlive();
         LuaValue[] values = new LuaValue[amount];
         for (int i = 0; i < amount; ++i) {
-            values[i] = LuaValue.from(state, i - amount);
+            values[i] = LuaValue.from(thread, i - amount);
         }
-        state.pop(amount);
+        LuaBindings.settop(thread.address, -amount - 1);
         return new VarArg(values);
     }
 
@@ -44,10 +45,14 @@ public class VarArg {
         return conformed;
     }
 
-    void push(LuaState state) {
-        state.checkIsAlive();
+    public static VarArg empty() {
+        return EMPTY;
+    }
+
+    void push(LuaThread thread) {
+        thread.checkIsAlive();
         for (LuaValue value : values) {
-            state.pushValue(value);
+            thread.pushValue(value);
         }
     }
 
@@ -79,7 +84,7 @@ public class VarArg {
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends UserData> T checkUserData(int i, Class<T> clazz, String function, String details) throws LuaException {
+    public <T> T checkUserData(int i, Class<T> clazz, String function, String details) throws LuaException {
         return (T)check(i, value -> clazz.isAssignableFrom(value.getClass()), function, details);
     }
 

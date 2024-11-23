@@ -1,13 +1,3 @@
-buildscript {
-    repositories {
-        mavenLocal()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.badlogicgames.gdx:gdx-jnigen-gradle:2.5.1'
-    }
-}
-
 plugins {
     id 'java'
     id 'java-library'
@@ -20,37 +10,10 @@ repositories {
     mavenCentral()
 }
 
-apply plugin: 'com.badlogicgames.gdx.gdx-jnigen'
-
 dependencies {
-    implementation 'com.badlogicgames.gdx:gdx-jnigen-loader:2.5.1'
+
 }
 
-jnigen {
-    sharedLibName = "wlua"
-    all {
-        headerDirs = ['lua']
-        cppExcludes = ['lua/testes/libs/*', 'lua/onelua.c']
-        cExcludes = ['lua/testes/libs/*', 'lua/onelua.c']
-        libraries = ' -lm '
-    }
-    add(Windows, x32)
-    add(Windows, x64)
-}
-
-tasks.register('unpackNatives', Copy) {
-    dependsOn jnigenJarNativesDesktop
-    from zipTree(jnigenJarNativesDesktop.outputs.files.first())
-    into 'build/resources/natives'
-    exclude 'META-INF/**'
-}
-
-processResources.dependsOn('unpackNatives')
-
-sourceSets {
-    main {
-        resources {
-            srcDirs "build/resources/natives"
-        }
-    }
+tasks.withType(JavaCompile).each {
+    it.options.compilerArgs.add("--enable-preview")
 }

@@ -1,5 +1,7 @@
 package me.white.wlua;
 
+import java.lang.foreign.MemorySegment;
+
 public final class FunctionValue extends RefValue {
     FunctionValue(LuaState state, int reference) {
         super(state, reference);
@@ -12,9 +14,10 @@ public final class FunctionValue extends RefValue {
 
     public VarArg run(VarArg args) {
         checkIsAlive();
-        if (!state.isSubThread(this.state)) {
-            throw new IllegalStateException("Could not move reference between states.");
-        }
-        return state.run(this, args);
+        state.pushValue(this);
+        args.push(state);
+        int code = LuaBindings.pcallk(state.address, args.size(), LuaBindings.MULTRET, 0, 0, MemorySegment.NULL);
+        LuaException.checkError(code, state);
+        return VarArg.collect(state, LuaBindings.gettop(state.address));
     }
 }

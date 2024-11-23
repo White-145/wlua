@@ -13,8 +13,8 @@ public final class IntegerValue extends NumberValue {
     }
 
     @Override
-    void push(LuaState state) {
-        LuaNatives.pushInteger(state.ptr, value);
+    void push(LuaThread thread) {
+        LuaBindings.pushinteger(thread.address, value);
     }
 
     @Override

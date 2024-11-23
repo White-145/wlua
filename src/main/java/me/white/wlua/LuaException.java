@@ -6,18 +6,18 @@ public class LuaException extends RuntimeException {
     }
 
     static void checkError(int code, LuaState state) {
-        if (code == LuaNatives.OK || code == LuaNatives.YIELD) {
+        if (code == LuaBindings.OK || code == LuaBindings.YIELD) {
             return;
         }
         String name = switch (code) {
-            case LuaNatives.ERRRUN -> "run";
-            case LuaNatives.ERRSYNTAX -> "syntax";
-            case LuaNatives.ERRMEM -> "memory";
-            case LuaNatives.ERRERR -> "error";
+            case LuaBindings.ERRRUN -> "run";
+            case LuaBindings.ERRSYNTAX -> "syntax";
+            case LuaBindings.ERRMEM -> "memory";
+            case LuaBindings.ERRERR -> "error";
             default -> "unknown";
         };
         String msg = LuaValue.from(state, -1).toString();
-        state.pop(1);
+        LuaBindings.settop(state.address, -2);
         throw new LuaException(name + ": " + msg);
     }
 }

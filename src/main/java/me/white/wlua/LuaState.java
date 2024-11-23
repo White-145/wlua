@@ -1,318 +1,133 @@
 package me.white.wlua;
 
-import java.lang.ref.WeakReference;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.util.HashSet;
+import java.util.Set;
 
-public final class LuaState extends LuaValue implements AutoCloseable {
-    private final Map<Integer, WeakReference<RefValue>> aliveReferences = new ConcurrentHashMap<>();
-    private final List<LuaState> subThreads = new ArrayList<>();
-    private final Properties properties = new Properties();
-    private final LuaState mainThread;
-    private final int id;
-    private boolean isClosed = false;
-    final long ptr;
+public final class LuaState extends LuaThread {
+    private static final String REFERENCES_FIELD = "references";
+    static final Arena GLOBAL = Arena.ofAuto();
+    static final MemorySegment GC_FUNCTION;
+    static final MemorySegment RUN_FUNCTION;
+    private final Set<Integer> references = new HashSet<>();
+    private int nextReference = 1;
+    final Set<LuaThread> threads = new HashSet<>();
 
-    LuaState(long ptr, int stateId, LuaState mainThread) {
-        if (ptr == 0) {
-            throw new IllegalStateException("Could not create new lua state.");
-        }
-        this.ptr = ptr;
-        this.id = stateId == -1 ? LuaInstances.add(this) : stateId;
-        this.mainThread = mainThread == null ? this : mainThread;
-        if (mainThread != null) {
-            mainThread.subThreads.add(this);
-            properties.putAll(mainThread.properties);
-        }
-        LuaNatives.initState(ptr, id);
+    static {
+        // ensure this is done after initialization of GLOBAL
+        GC_FUNCTION = LuaBindings.stubCFunction(GLOBAL, address -> {
+            LuaBindings.getiuservalue(address, -1, 1);
+            int id = (int)LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
+            ObjectRegistry.remove(id);
+            return 0;
+        });
+        RUN_FUNCTION = LuaBindings.stubCFunction(GLOBAL, address -> {
+            LuaBindings.getiuservalue(address, -1, 1);
+            int id = (int)LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
+            Object object = ObjectRegistry.get(id);
+            if (!(object instanceof JavaFunction)) {
+                try (Arena arena = Arena.ofConfined()) {
+                    LuaBindings.pushstring(address, arena.allocateFrom("error getting function"));
+                }
+                LuaBindings.error(address);
+                return 0;
+            }
+            LuaBindings.settop(address, -2);
+            LuaThread thread = LuaThread.getThread(address);
+            VarArg args = VarArg.collect(thread, LuaBindings.gettop(address));
+            VarArg results = ((JavaFunction)object).run(thread, args);
+            results.push(thread);
+            return results.size();
+        });
     }
 
     public LuaState() {
-        this(LuaNatives.newState(), -1, null);
-    }
-
-    void pop(int n) {
-        checkIsAlive();
-        LuaNatives.pop(ptr, n);
-    }
-
-    void pushValue(LuaValue value) {
-        checkIsAlive();
-        if (value == null) {
-            pushNil();
-        } else {
-            value.push(this);
+        super(null, LuaBindings.auxiliaryNewstate());
+        LuaBindings.createtable(address, 0, 0);
+        try (Arena arena = Arena.ofConfined()) {
+            LuaBindings.setfield(address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(REFERENCES_FIELD));
+        }
+        LuaBindings.pushinteger(address, id);
+        try (Arena arena = Arena.ofConfined()) {
+            LuaBindings.setfield(address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(LuaThread.STATE_ID_FIELD));
         }
     }
 
-    void pushNil() {
-        checkIsAlive();
-        LuaNatives.pushNil(ptr);
+    public LuaThread subThread() {
+        return new LuaThread(this, LuaBindings.newthread(address));
     }
 
-    LuaValue fromStack(int index) {
-        checkIsAlive();
-        ValueType valueType = ValueType.fromId(LuaNatives.getType(ptr, index));
-        if (valueType == null) {
-            return LuaValue.nil();
-        }
-        return valueType.fromStack(this, index);
+    public boolean isSubThread(LuaThread thread) {
+        return thread == this || threads.contains(thread);
     }
 
-    @SuppressWarnings("unchecked")
-    <T extends RefValue> T getReference(int index, RefValue.RefValueProvider<T> provider) {
-        int reference = LuaNatives.getReference(ptr, index);
-        if (mainThread.aliveReferences.containsKey(reference)) {
-            return (T)mainThread.aliveReferences.get(reference).get();
+    int getReference(int index) {
+        int absindex = LuaBindings.absindex(address, index);
+        try (Arena arena = Arena.ofConfined()) {
+            LuaBindings.getfield(address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(REFERENCES_FIELD));
         }
-        T ref = provider.getReference(this, reference);
-        mainThread.aliveReferences.put(reference, new WeakReference<>(ref));
-        return ref;
+        LuaBindings.pushvalue(address, absindex);
+        LuaBindings.gettable(address, -2);
+        if (LuaBindings.isinteger(address, -1) == 1) {
+            int reference = (int)LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
+            LuaBindings.settop(address, -3);
+            return reference;
+        }
+        int reference = nextReference;
+        nextReference += 1;
+        references.add(reference);
+        LuaBindings.pushvalue(address, absindex);
+        LuaBindings.pushinteger(address, reference);
+        LuaBindings.settable(address, -4);
+        LuaBindings.pushinteger(address, reference);
+        LuaBindings.pushvalue(address, absindex);
+        LuaBindings.settable(address, -4);
+        LuaBindings.settop(address, -3);
+        return reference;
     }
 
     boolean hasReference(int reference) {
-        return !isClosed() && mainThread.aliveReferences.containsKey(reference);
+        return references.contains(reference);
+    }
+
+    LuaValue fromReference(int reference) {
+        try (Arena arena = Arena.ofConfined()) {
+            LuaBindings.getfield(address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(REFERENCES_FIELD));
+        }
+        LuaBindings.pushinteger(address, reference);
+        LuaBindings.gettable(address, -2);
+        LuaValue value = LuaValue.from(this, -1);
+        LuaBindings.settop(address, -3);
+        return value;
     }
 
     void cleanReference(int reference) {
-        if (!isClosed() && mainThread.aliveReferences.containsKey(reference)) {
-            LuaNatives.deleteReference(ptr, reference);
-            mainThread.aliveReferences.remove(reference);
+        if (!hasReference(reference)) {
+            return;
         }
-    }
-
-    public void checkIsAlive() {
-        if (isClosed()) {
-            throw new IllegalStateException("Could not use closed lua state.");
+        references.remove(reference);
+        try (Arena arena = Arena.ofConfined()) {
+            LuaBindings.getfield(address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(REFERENCES_FIELD));
         }
-    }
-
-    public LuaState getMainThread() {
-        return mainThread;
-    }
-
-    public boolean isSubThread(LuaState thread) {
-        Objects.requireNonNull(thread);
-        return !isClosed() && thread.mainThread == mainThread;
-    }
-
-    public LuaState subThread() {
-        checkIsAlive();
-        int threadId = LuaInstances.add(id -> new LuaState(LuaNatives.newThread(mainThread.ptr), id, mainThread));
-        LuaState thread = LuaInstances.get(threadId);
-        mainThread.subThreads.add(thread);
-        return thread;
-    }
-
-    public Properties getProperties() {
-        return properties;
-    }
-
-    public void openLib(Library lib) {
-        LuaNatives.openLib(ptr, lib.id);
-    }
-
-    public TableValue getGlobalTable() {
-        checkIsAlive();
-        LuaNatives.pushGlobalTable(ptr);
-        LuaValue ref = LuaValue.from(this, -1);
-        pop(1);
-        return (TableValue)ref;
-    }
-
-    public FunctionValue reference(JavaFunction function) {
-        LuaNatives.pushFunction(ptr, function);
-        FunctionValue value = getReference(-1, FunctionValue::new);
-        pop(1);
-        return value;
-    }
-
-    public TableValue reference(Map<LuaValue, LuaValue> table) {
-        LuaNatives.newTable(ptr, table.size());
-        for (Map.Entry<LuaValue, LuaValue> entry : table.entrySet()) {
-            pushValue(entry.getKey());
-            pushValue(entry.getValue());
-            LuaNatives.tableSet(ptr);
-        }
-        TableValue value = getReference(-1, TableValue::new);
-        pop(1);
-        return value;
-    }
-
-    public void setGlobal(String name, LuaValue value) {
-        Objects.requireNonNull(name);
-        checkIsAlive();
-        if (value == null) {
-            pushNil();
-        } else {
-            pushValue(value);
-        }
-        LuaNatives.setGlobal(ptr, name);
-    }
-
-    public LuaValue getGlobal(String name) {
-        Objects.requireNonNull(name);
-        checkIsAlive();
-        LuaNatives.getGlobal(ptr, name);
-        LuaValue value = LuaValue.from(this, -1);
-        pop(1);
-        return value;
-    }
-
-    public FunctionValue load(String chunk, String name) {
-        Objects.requireNonNull(chunk);
-        Objects.requireNonNull(name);
-        checkIsAlive();
-        int code = LuaNatives.loadString(ptr, chunk, name);
-        LuaException.checkError(code, this);
-        LuaValue value = LuaValue.from(this, -1);
-        pop(1);
-        return (FunctionValue)value;
-    }
-
-    public FunctionValue load(String chunk) {
-        return load(chunk, chunk);
-    }
-
-    public VarArg run(FunctionValue chunk, VarArg args) {
-        Objects.requireNonNull(chunk);
-        Objects.requireNonNull(args);
-        checkIsAlive();
-        // TODO remove this calculation. seems like lua knows what its doing
-        int top = LuaNatives.getTop(ptr);
-        pushValue(chunk);
-        args.push(this);
-        int code = LuaNatives.protectedCall(ptr, args.size(), LuaNatives.MULTRET);
-        LuaException.checkError(code, this);
-        int amount = LuaNatives.getTop(ptr) - top;
-        return VarArg.collect(this, amount);
-    }
-
-    public VarArg run(String chunk) {
-        return run(load(chunk), new VarArg());
-    }
-
-    private VarArg resume(FunctionValue chunk, VarArg args) {
-        Objects.requireNonNull(args);
-        checkIsAlive();
-        int top = LuaNatives.getTop(ptr);
-        if (chunk != null) {
-            pushValue(chunk);
-        } else if (!isSuspended()) {
-            throw new IllegalStateException("Cannot resume not suspended state.");
-        }
-        args.push(this);
-        int code = LuaNatives.resume(ptr, args.size());
-        LuaException.checkError(code, this);
-        int amount = LuaNatives.getTop(ptr) - top;
-        return VarArg.collect(this, amount);
-    }
-
-    public VarArg start(FunctionValue chunk, VarArg args) {
-        return resume(chunk, args);
-    }
-
-    public VarArg resume(VarArg args) {
-        return resume(null, args);
-    }
-
-    // VarArg parameter is only used for neat `return yield(result)` syntax
-    public VarArg yield(VarArg result) {
-        checkIsAlive();
-        if (!isYieldable()) {
-            throw new IllegalStateException("Cannot yield non-yieldable state");
-        }
-        LuaNatives.yield(ptr);
-        return result;
-    }
-
-    public VarArg yield() {
-        return this.yield(new VarArg());
-    }
-
-    public boolean isYieldable() {
-        return !isClosed() && LuaNatives.isYieldable(ptr);
-    }
-
-    public boolean isSuspended() {
-        return !isClosed() && LuaNatives.isSuspended(ptr);
-    }
-
-    public boolean isClosed() {
-        return mainThread.isClosed;
+        LuaBindings.pushinteger(address, reference);
+        LuaBindings.gettable(address, -2);
+        LuaBindings.pushnil(address);
+        LuaBindings.settable(address, -3);
+        LuaBindings.pushinteger(address, reference);
+        LuaBindings.pushnil(address);
+        LuaBindings.settable(address, -3);
+        LuaBindings.settop(address, -2);
     }
 
     @Override
     public void close() {
-        if (isClosed()) {
+        if (!isAlive()) {
             return;
         }
-        LuaInstances.remove(id);
-        if (mainThread == this) {
-            for (LuaState thread : subThreads) {
-                LuaInstances.remove(thread.id);
-            }
-            subThreads.clear();
-            for (WeakReference<RefValue> ref : aliveReferences.values()) {
-                RefValue refValue = ref.get();
-                if (refValue != null) {
-                    refValue.unref();
-                }
-            }
-            LuaNatives.closeState(ptr);
-        } else {
-            mainThread.subThreads.remove(this);
-            LuaNatives.removeState(ptr);
+        for (LuaThread thread : threads) {
+            thread.close();
         }
-        isClosed = true;
-    }
-
-    @Override
-    void push(LuaState state) {
-        if (!state.isSubThread(this)) {
-            throw new IllegalStateException("Could not push thread to the separate lua state.");
-        }
-        LuaNatives.pushThread(ptr);
-    }
-
-    @Override
-    public ValueType getType() {
-        return ValueType.THREAD;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-        if (!(obj instanceof LuaState)) {
-            return false;
-        }
-        return ptr == ((LuaState)obj).ptr;
-    }
-
-    @Override
-    public int hashCode() {
-        return Long.hashCode(ptr);
-    }
-
-    public enum Library {
-        ALL(-1),
-        BASIC(0),
-        COROUTINE(1),
-        PACKAGE(2),
-        STRING(3),
-        UTF8(4),
-        TABLE(5),
-        MATH(6),
-        IO(7),
-        OS(8),
-        DEBUG(9);
-
-        final int id;
-
-        Library(int id) {
-            this.id = id;
-        }
+        LuaBindings.close(address);
     }
 }

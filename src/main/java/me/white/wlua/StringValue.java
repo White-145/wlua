@@ -1,5 +1,6 @@
 package me.white.wlua;
 
+import java.lang.foreign.Arena;
 import java.util.Objects;
 
 public final class StringValue extends LuaValue {
@@ -11,8 +12,10 @@ public final class StringValue extends LuaValue {
     }
 
     @Override
-    void push(LuaState state) {
-        LuaNatives.pushString(state.ptr, value);
+    void push(LuaThread thread) {
+        try (Arena arena = Arena.ofConfined()) {
+            LuaBindings.pushstring(thread.address, arena.allocateFrom(value));
+        }
     }
 
     @Override

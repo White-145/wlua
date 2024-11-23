@@ -1,7 +1,5 @@
 package me.white.wlua;
 
-import me.white.wlua.annotation.*;
-
 import java.lang.reflect.Field;
 import java.util.*;
 
@@ -21,30 +19,15 @@ public class TestMain {
     public static void testState() {
         LuaState state2 = new LuaState();
         LuaState state = new LuaState();
-        assert LuaInstances.get(0) == state2;
-        assert LuaInstances.get(1) == state;
-        assert state2.getMainThread() == state2;
-        assert state2.getMainThread() != state.getMainThread();
-        assert !state2.isClosed();
+        assert state2.getState() == state2;
+        assert state2.getState() != state.getState();
+        assert state2.isAlive();
         assert state2.isSubThread(state2);
         state2.checkIsAlive();
         state2.close();
-        assert LuaInstances.get(1) == state;
-        assert LuaInstances.add(i -> null) == 0;
-        assert LuaInstances.add(i -> null) == 2;
-        LuaInstances.remove(0);
-        LuaInstances.remove(2);
-        assert state2.isClosed();
-        try {
-            state2.checkIsAlive();
-            assert false;
-        } catch (IllegalStateException ignored) { }
-        assert !state.isClosed();
+        assert !state2.isAlive();
+        assert state.isAlive();
         state.close();
-        assert LuaInstances.add(i -> null) == 0;
-        assert LuaInstances.add(i -> null) == 1;
-        LuaInstances.remove(0);
-        LuaInstances.remove(1);
     }
 
     public static void testProgram() {
@@ -125,13 +108,13 @@ public class TestMain {
         LuaState state = new LuaState();
         Map<?, ?> references;
         try {
-            Field field = LuaState.class.getDeclaredField("aliveReferences");
+            Field field = LuaState.class.getDeclaredField("references");
             field.setAccessible(true);
             references = (Map<?, ?>)field.get(state);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
-        state.load("a=nil");
+        LuaValue.load(state, "a = nil");
         {
             LuaValue a = state.getGlobalTable();
         }
@@ -141,9 +124,9 @@ public class TestMain {
 
     public static void testFunction() {
         try (LuaState state = new LuaState()) {
-            state.setGlobal("b", LuaValue.reference(state, (lua, args) -> {
+            state.setGlobal("b", LuaValue.fromFunction(state, (thread, args) -> {
                 assert args.size() == 2;
-                assert lua == state;
+                assert thread == state;
                 LuaValue a = args.get(0);
                 assert a instanceof IntegerValue;
                 assert a.toInteger() == 4;
@@ -160,7 +143,7 @@ public class TestMain {
 
     public static void testTable() {
         try (LuaState state = new LuaState()) {
-            TableValue table = LuaValue.reference(state, Map.of(LuaValue.of("foo"), LuaValue.of(3), LuaValue.of("bar"), LuaValue.of(5), LuaValue.of("baz"), LuaValue.of(15)));
+            TableValue table = LuaValue.fromMap(state, Map.of(LuaValue.of("foo"), LuaValue.of(3), LuaValue.of("bar"), LuaValue.of(5), LuaValue.of("baz"), LuaValue.of(15)));
             assert table.size() == 3;
             assert table.containsKey(LuaValue.of("foo"));
             assert !table.containsKey(LuaValue.of(5));
@@ -222,7 +205,7 @@ public class TestMain {
 
     public static void testList() {
         try (LuaState state = new LuaState()) {
-            TableValue table = LuaValue.reference(state, new HashMap<>(Map.of(LuaValue.of("foo"), LuaValue.of(7), LuaValue.of("bar"), LuaValue.of(22), LuaValue.index(0), LuaValue.of(3), LuaValue.index(1), LuaValue.of(10), LuaValue.index(3), LuaValue.of(94))));
+            TableValue table = LuaValue.fromMap(state, new HashMap<>(Map.of(LuaValue.of("foo"), LuaValue.of(7), LuaValue.of("bar"), LuaValue.of(22), LuaValue.index(0), LuaValue.of(3), LuaValue.index(1), LuaValue.of(10), LuaValue.index(3), LuaValue.of(94))));
             assert table.getList().getTable() == table;
             ListValue list = table.getList();
             assert list.size() == 2;
@@ -310,87 +293,26 @@ public class TestMain {
 
     public static void testUserData() {
         try (LuaState state = new LuaState()) {
-            TestUserData userData = new TestUserData(state);
-            state.setGlobal("ud", userData);
-            state.run("a = ud + 993");
-            assert state.getGlobal("a").equals(LuaValue.of("addition!"));
-            state.run("a = ud - (-993)");
-            assert state.getGlobal("a").equals(LuaValue.of("subtraction!"));
-            state.run("a = ud * 399");
-            assert state.getGlobal("a").equals(LuaValue.of("multiplication!"));
-            state.run("a = ud / 939");
-            assert state.getGlobal("a").equals(LuaValue.of("division!"));
-            state.run("a = ud % 393");
-            assert state.getGlobal("a").equals(LuaValue.of("modulation?"));
-            state.run("a = ud ^ 999");
-            assert state.getGlobal("a").equals(LuaValue.of("no xor for you"));
-            state.run("a = -ud");
-            assert state.getGlobal("a").equals(LuaValue.of("certainly not trying this one"));
-            state.run("a = ud // 111");
-            assert state.getGlobal("a").equals(LuaValue.of(333));
-            state.run("a = ud & 717");
-            assert state.getGlobal("a").equals(LuaValue.of(true));
-            state.run("a = ud | 171");
-            assert state.getGlobal("a").equals(LuaValue.of(false));
-            state.run("a = ~ud");
-            assert state.getGlobal("a").equals(LuaValue.of("absolutely not"));
-            state.run("a = ud << 'shift left'");
-            assert state.getGlobal("a").equals(LuaValue.of(-1));
-            state.run("a = ud >> 'shift right'");
-            assert state.getGlobal("a").equals(LuaValue.of(-2));
-            state.run("a = ud .. 'concatenate'");
-            assert state.getGlobal("a").equals(LuaValue.of(-3));
-            state.run("a = #ud");
-            assert state.getGlobal("a").equals(LuaValue.of(-4));
-            state.run("a = ud == 'equals!'");
-            assert state.getGlobal("a").equals(LuaValue.of(false));
-            state.run("a = ud < 'less'");
-            assert state.getGlobal("a").equals(LuaValue.of(true));
-            state.run("a = ud <= 'less OR equals'");
-            assert state.getGlobal("a").equals(LuaValue.of(false));
-            state.run("a, b = ud('calling', nil)");
-            assert state.getGlobal("a").equals(LuaValue.nil());
-            assert state.getGlobal("b").equals(LuaValue.of("wrong number"));
-            state.run("a = ud.index");
-            assert state.getGlobal("a").equals(LuaValue.of("nil"));
-            state.run("ud.new = 'val'");
-            state.run("a = ud.fang; ud.fang = 123");
-            assert state.getGlobal("a").equals(LuaValue.of(987));
-            assert userData.fang.equals(LuaValue.of(123));
-            state.run("a = ud.hest; ud.hest = 234");
-            assert state.getGlobal("a").equals(LuaValue.of(876));
-            assert userData.hest.equals(LuaValue.of(876));
-            state.run("a = nil");
-            assert state.getGlobal("a").isNil();
-            state.run("a = ud.pile");
-            state.run("ud.pile = 345");
-            assert state.getGlobal("a").equals(LuaValue.of("nil"));
-            assert userData.pile.equals(LuaValue.of(345));
-            state.run("a = ud.lamy; ud.lamy = 456");
-            assert state.getGlobal("a").equals(LuaValue.of(654));
-            state.run("a, b = ud:corio('lamio')");
-            assert state.getGlobal("a").equals(LuaValue.of("tanio"));
-            assert state.getGlobal("b").equals(LuaValue.of("ravio"));
-            state.openLib(LuaState.Library.BASIC);
-            state.run("a = tostring(ud)");
-            assert state.getGlobal("a").equals(LuaValue.of("string"));
+            state.setGlobal("ud", LuaValue.userdata(new TestUserData()));
+            Object object = ((UserDataValue)state.getGlobal("ud")).getValue();
+            assert object instanceof TestUserData;
         }
     }
 
     public static void testCoroutinesAndThreads() {
         try (LuaState state = new LuaState()) {
-            state.setGlobal("a", LuaValue.reference(state, (lua, args) -> {
+            state.setGlobal("a", LuaValue.fromFunction(state, (lua, args) -> {
                 assert lua.isYieldable();
-                return lua.yield();
+                return lua.yield(VarArg.empty());
             }));
-            LuaState thread = state.subThread();
-            state.start(state.load("a(); b = 8"), new VarArg());
-            thread.start(state.load("b = 1; a(); b = 2"), new VarArg());
+            LuaThread thread = state.subThread();
+            state.start(LuaValue.load(state, "a(); b = 8"), new VarArg());
+            thread.start(LuaValue.load(state, "b = 1; a(); b = 2"), new VarArg());
             assert thread.getGlobal("b").equals(LuaValue.of(1));
             assert thread.isSuspended();
-            LuaState thread2 = state.subThread();
+            LuaThread thread2 = state.subThread();
             assert !thread2.isSuspended();
-            thread2.start(state.load("b = 3; a(); b = 0"), new VarArg());
+            thread2.start(LuaValue.load(state, "b = 3; a(); b = 0"), new VarArg());
             assert state.getGlobal("b").equals(LuaValue.of(3));
             thread.resume(new VarArg());
             assert state.getGlobal("b").equals(LuaValue.of(2));
@@ -404,199 +326,5 @@ public class TestMain {
         }
     }
 
-    public static class TestUserData extends UserData {
-        private LuaState originalState;
-        boolean isClosed = false;
-
-        TestUserData(LuaState state) {
-            super("Test");
-            originalState = state;
-        }
-
-        @LuaField("fang")
-        public LuaValue fang = LuaValue.of(987);
-
-        @LuaField(value = "hest", type = FieldType.READ_ONLY)
-        public LuaValue hest = LuaValue.of(876);
-
-        @LuaField(value = "pile", type = FieldType.WRITE_ONLY)
-        public LuaValue pile = LuaValue.of(765);
-
-        @LuaAccessor("lamy")
-        public LuaValue getLamy(LuaState state) {
-            assert originalState == state;
-            return LuaValue.of(654);
-        }
-
-        @LuaAccessor("lamy")
-        public void setLamy(LuaState state, LuaValue value) {
-            assert originalState == state;
-            assert value.equals(LuaValue.of(456));
-        }
-
-        @LuaFunction("corio")
-        public VarArg corio(LuaState state, VarArg args) {
-            assert originalState == state;
-            assert args.size() == 2;
-            assert args.get(0) == this;
-            assert args.get(1).equals(LuaValue.of("lamio"));
-            return new VarArg(LuaValue.of("tanio"), LuaValue.of("ravio"));
-        }
-
-        @LuaMetaMethod(MetaMethodType.ADD)
-        public LuaValue add(LuaState state, LuaValue value) {
-            assert originalState == state;
-            assert value.equals(LuaValue.of(993));
-            return LuaValue.of("addition!");
-        }
-
-        @LuaMetaMethod(MetaMethodType.SUBTRACT)
-        public LuaValue subtract(LuaState state, LuaValue value) {
-            assert originalState == state;
-            assert value.equals(LuaValue.of(-993));
-            return LuaValue.of("subtraction!");
-        }
-
-        @LuaMetaMethod(MetaMethodType.MULTIPLY)
-        public LuaValue multiply(LuaState state, LuaValue value) {
-            assert originalState == state;
-            assert value.equals(LuaValue.of(399));
-            return LuaValue.of("multiplication!");
-        }
-
-        @LuaMetaMethod(MetaMethodType.DIVIDE)
-        public LuaValue divide(LuaState state, LuaValue value) {
-            assert originalState == state;
-            assert value.equals(LuaValue.of(939));
-            return LuaValue.of("division!");
-        }
-
-        @LuaMetaMethod(MetaMethodType.MODULO)
-        public LuaValue modulo(LuaState state, LuaValue value) {
-            assert originalState == state;
-            assert value.equals(LuaValue.of(393));
-            return LuaValue.of("modulation?");
-        }
-
-        @LuaMetaMethod(MetaMethodType.POWER)
-        public LuaValue power(LuaState state, LuaValue value) {
-            assert originalState == state;
-            assert value.equals(LuaValue.of(999));
-            return LuaValue.of("no xor for you");
-        }
-
-        @LuaMetaMethod(MetaMethodType.UNARY_MINUS)
-        public LuaValue unaryMinus(LuaState state) {
-            assert originalState == state;
-            return LuaValue.of("certainly not trying this one");
-        }
-
-        @LuaMetaMethod(MetaMethodType.INTEGER_DIVIDE)
-        public LuaValue integerDivide(LuaState state, LuaValue value) {
-            assert originalState == state;
-            assert value.equals(LuaValue.of(111));
-            return LuaValue.of(333);
-        }
-
-        @LuaMetaMethod(MetaMethodType.BINARY_AND)
-        public LuaValue binaryAnd(LuaState state, LuaValue value) {
-            assert originalState == state;
-            assert value.equals(LuaValue.of(717));
-            return LuaValue.of(true);
-        }
-
-        @LuaMetaMethod(MetaMethodType.BINARY_OR)
-        public LuaValue binaryOr(LuaState state, LuaValue value) {
-            assert originalState == state;
-            assert value.equals(LuaValue.of(171));
-            return LuaValue.of(false);
-        }
-
-        @LuaMetaMethod(MetaMethodType.BINARY_NOT)
-        public LuaValue binaryNot(LuaState state) {
-            assert originalState == state;
-            return LuaValue.of("absolutely not");
-        }
-
-        @LuaMetaMethod(MetaMethodType.SHIFT_LEFT)
-        public LuaValue shiftLeft(LuaState state, LuaValue value) {
-            assert originalState == state;
-            assert value.equals(LuaValue.of("shift left"));
-            return LuaValue.of(-1);
-        }
-
-        @LuaMetaMethod(MetaMethodType.SHIFT_RIGHT)
-        public LuaValue shiftRight(LuaState state, LuaValue value) {
-            assert originalState == state;
-            assert value.equals(LuaValue.of("shift right"));
-            return LuaValue.of(-2);
-        }
-
-        @LuaMetaMethod(MetaMethodType.CONCATENATE)
-        public LuaValue concatenate(LuaState state, LuaValue value) {
-            assert originalState == state;
-            assert value.equals(LuaValue.of("concatenate"));
-            return LuaValue.of(-3);
-        }
-
-        @LuaMetaMethod(MetaMethodType.LENGTH)
-        public LuaValue length(LuaState state) {
-            assert originalState == state;
-            return LuaValue.of(-4);
-        }
-
-        @LuaMetaMethod(MetaMethodType.EQUALS)
-        public LuaValue equals0(LuaState state, LuaValue value) {
-            assert originalState == state;
-            assert value.equals(LuaValue.of("equals!"));
-            return LuaValue.of(false);
-        }
-
-        @LuaMetaMethod(MetaMethodType.LESS_THAN)
-        public LuaValue lessThan(LuaState state, LuaValue value) {
-            assert originalState == state;
-            assert value.equals(LuaValue.of("less"));
-            return LuaValue.of(true);
-        }
-
-        @LuaMetaMethod(MetaMethodType.LESS_EQUAL)
-        public LuaValue lessEqual(LuaState state, LuaValue value) {
-            assert originalState == state;
-            assert value.equals(LuaValue.of("less OR equals"));
-            return LuaValue.of(false);
-        }
-
-        @LuaMetaMethod(MetaMethodType.CALL)
-        public VarArg call(LuaState state, VarArg args) {
-            assert originalState == state;
-            assert args.size() == 1;
-            assert args.get(0).equals(LuaValue.of("calling"));
-            return new VarArg(LuaValue.nil(), LuaValue.of("wrong number"));
-        }
-
-        @LuaMetaMethod(MetaMethodType.CLOSE)
-        public void close(LuaState state, LuaValue err) {
-            assert originalState == state;
-            isClosed = true;
-        }
-
-        @LuaMetaMethod(MetaMethodType.INDEX)
-        public LuaValue index(LuaState state, LuaValue key) {
-            assert originalState == state;
-            key.equals(LuaValue.of("index"));
-            return LuaValue.of("nil");
-        }
-
-        @LuaMetaMethod(MetaMethodType.NEW_INDEX)
-        public void newIndex(LuaState state, LuaValue key, LuaValue value) {
-            assert originalState == state;
-            key.equals(LuaValue.of("new"));
-            value.equals(LuaValue.of("val"));
-        }
-
-        @LuaCustomMetaMethod("__tostring")
-        public VarArg string(LuaState state, VarArg args) {
-            return new VarArg(LuaValue.of("string"));
-        }
-    }
+    private static class TestUserData { }
 }

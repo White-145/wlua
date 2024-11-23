@@ -10,8 +10,8 @@ public final class BooleanValue extends LuaValue {
     }
 
     @Override
-    void push(LuaState state) {
-        LuaNatives.pushBoolean(state.ptr, value);
+    void push(LuaThread thread) {
+        LuaBindings.pushboolean(thread.address, value ? 1 : 0);
     }
 
     @Override

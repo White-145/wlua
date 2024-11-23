@@ -32,12 +32,12 @@ public sealed abstract class RefValue extends LuaValue permits FunctionValue, Ta
     }
 
     @Override
-    final void push(LuaState state) {
+    final void push(LuaThread thread) {
         checkIsAlive();
-        if (!state.isSubThread(this.state)) {
+        if (!state.isSubThread(thread)) {
             throw new IllegalStateException("Cannot move references between threads.");
         }
-        LuaNatives.fromReference(state.ptr, reference);
+        state.fromReference(reference);
     }
 
     @Override
@@ -49,17 +49,17 @@ public sealed abstract class RefValue extends LuaValue permits FunctionValue, Ta
             return false;
         }
         RefValue ref = (RefValue)obj;
-        return ref.state.isSubThread(state) && reference == ref.reference;
+        return state.equals(ref.state) && reference == ref.reference;
     }
 
     @Override
     public int hashCode() {
-        return state.getMainThread().hashCode() * 17 + reference;
+        return state.hashCode() * 17 + reference;
     }
 
     private static class RefCleanable implements Runnable {
-        private LuaState state;
-        private int reference;
+        private final LuaState state;
+        private final int reference;
 
         private RefCleanable(LuaState state, int reference) {
             this.state = state;
@@ -70,10 +70,5 @@ public sealed abstract class RefValue extends LuaValue permits FunctionValue, Ta
         public void run() {
             state.cleanReference(reference);
         }
-    }
-
-    @FunctionalInterface
-    interface RefValueProvider<T extends RefValue> {
-        T getReference(LuaState state, int reference);
     }
 }

@@ -1,67 +1,73 @@
 package me.white.wlua;
 
+import java.lang.foreign.MemorySegment;
+
 public enum ValueType {
-    NIL(LuaNatives.TNIL, NilValue.class) {
+    NIL(LuaBindings.TNIL, "nil", NilValue.class) {
         @Override
-        LuaValue fromStack(LuaState state, int index) {
+        LuaValue fromStack(LuaThread thread, int index) {
             return NilValue.INSTANCE;
         }
     },
-    BOOLEAN(LuaNatives.TBOOLEAN, BooleanValue.class) {
+    BOOLEAN(LuaBindings.TBOOLEAN, "boolean", BooleanValue.class) {
         @Override
-        LuaValue fromStack(LuaState state, int index) {
-            return LuaNatives.toBoolean(state.ptr, index) ? BooleanValue.TRUE : BooleanValue.FALSE;
+        LuaValue fromStack(LuaThread thread, int index) {
+            return LuaBindings.toboolean(thread.address, index) == 1 ? BooleanValue.TRUE : BooleanValue.FALSE;
         }
     },
-    NUMBER(LuaNatives.TNUMBER, NumberValue.class) {
+    NUMBER(LuaBindings.TNUMBER, "number", NumberValue.class) {
         @Override
-        LuaValue fromStack(LuaState state, int index) {
-            if (LuaNatives.isInteger(state.ptr, index)) {
-                return new IntegerValue(LuaNatives.toInteger(state.ptr, index));
+        LuaValue fromStack(LuaThread thread, int index) {
+            if (LuaBindings.isinteger(thread.address, index) == 1) {
+                return new IntegerValue(LuaBindings.tointegerx(thread.address, index, MemorySegment.NULL));
             }
-            return new NumberValue(LuaNatives.toNumber(state.ptr, index));
+            return new NumberValue(LuaBindings.tonumberx(thread.address, index, MemorySegment.NULL));
         }
     },
-    STRING(LuaNatives.TSTRING, StringValue.class) {
+    STRING(LuaBindings.TSTRING, "string", StringValue.class) {
         @Override
-        LuaValue fromStack(LuaState state, int index) {
-            return new StringValue(LuaNatives.toString(state.ptr, index));
+        LuaValue fromStack(LuaThread thread, int index) {
+            return new StringValue(LuaBindings.tolstring(thread.address, index, MemorySegment.NULL).getString(0));
         }
     },
-    TABLE(LuaNatives.TTABLE, TableValue.class) {
+    TABLE(LuaBindings.TTABLE, "table", TableValue.class) {
         @Override
-        LuaValue fromStack(LuaState state, int index) {
-            return state.getReference(index, TableValue::new);
+        LuaValue fromStack(LuaThread thread, int index) {
+            LuaState state = thread.getState();
+            return new TableValue(state, state.getReference(index));
         }
     },
-    FUNCTION(LuaNatives.TFUNCTION, FunctionValue.class) {
+    FUNCTION(LuaBindings.TFUNCTION, "function", FunctionValue.class) {
         @Override
-        LuaValue fromStack(LuaState state, int index) {
-            return state.getReference(index, FunctionValue::new);
+        LuaValue fromStack(LuaThread thread, int index) {
+            LuaState state = thread.getState();
+            return new FunctionValue(state, state.getReference(index));
         }
     },
-    USER_DATA(LuaNatives.TUSERDATA, UserData.class) {
+    USER_DATA(LuaBindings.TUSERDATA, "userdata", UserDataValue.class) {
         @Override
-        LuaValue fromStack(LuaState state, int index) {
-            Object userdata = LuaNatives.getUserData(state.ptr, index);
-            if (!(userdata instanceof UserData)) {
-                throw new IllegalStateException("Could not get userdata value.");
-            }
-            return (UserData)userdata;
+        LuaValue fromStack(LuaThread thread, int index) {
+            LuaBindings.getiuservalue(thread.address, index, 1);
+            int id = (int)LuaBindings.tointegerx(thread.address, -1, MemorySegment.NULL);
+            LuaBindings.settop(thread.address, -2);
+            return new UserDataValue(ObjectRegistry.get(id));
         }
     },
-    THREAD(LuaNatives.TTHREAD, LuaState.class) {
+    THREAD(LuaBindings.TTHREAD, "thread", LuaThread.class) {
         @Override
-        LuaValue fromStack(LuaState state, int index) {
-            return LuaInstances.get(LuaNatives.getThreadId(state.ptr, index));
+        LuaValue fromStack(LuaThread thread, int index) {
+            MemorySegment address = LuaBindings.tothread(thread.address, index);
+            return LuaThread.getThread(address);
         }
     };
 
     final int id;
+    final String name;
     final Class<?> clazz;
 
-    ValueType(int id, Class<?> clazz) {
+    ValueType(int id, String name, Class<?> clazz) {
         this.id = id;
+        this.name = name;
         this.clazz = clazz;
     }
 
@@ -74,10 +80,6 @@ public enum ValueType {
         return null;
     }
 
-    LuaValue fromStack(LuaState state, int index) {
-        throw new UnsupportedOperationException();
-    }
-
     public static ValueType fromClass(Class<?> clazz) {
         for (ValueType type : ValueType.values()) {
             if (type.clazz.isAssignableFrom(clazz)) {
@@ -87,17 +89,12 @@ public enum ValueType {
         return null;
     }
 
+    LuaValue fromStack(LuaThread thread, int index) {
+        throw new UnsupportedOperationException();
+    }
+
     @Override
     public String toString() {
-        return switch (this) {
-            case NIL -> "nil";
-            case TABLE -> "table";
-            case NUMBER -> "number";
-            case STRING -> "string";
-            case THREAD -> "thread";
-            case BOOLEAN -> "boolean";
-            case FUNCTION -> "function";
-            case USER_DATA -> "userdata";
-        };
+        return name;
     }
 }

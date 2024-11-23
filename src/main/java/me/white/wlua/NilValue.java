@@ -6,8 +6,8 @@ public final class NilValue extends LuaValue {
     private NilValue() { }
 
     @Override
-    void push(LuaState state) {
-        LuaNatives.pushNil(state.ptr);
+    void push(LuaThread thread) {
+        LuaBindings.pushnil(thread.address);
     }
 
     @Override

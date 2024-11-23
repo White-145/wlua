@@ -8,8 +8,8 @@ public sealed class NumberValue extends LuaValue permits IntegerValue {
     }
 
     @Override
-    void push(LuaState state) {
-        LuaNatives.pushNumber(state.ptr, value);
+    void push(LuaThread thread) {
+        LuaBindings.pushnumber(thread.address, value);
     }
 
     @Override
