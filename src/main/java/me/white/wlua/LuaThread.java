@@ -13,6 +13,9 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
 
     LuaThread(LuaState state, MemorySegment address) {
         this.state = state;
+        if (state != null) {
+            state.threads.add(this);
+        }
         this.address = address;
         id = ObjectRegistry.register(this);
         LuaBindings.pushthread(address);
@@ -28,13 +31,13 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
                     throw new IllegalStateException("Could not adopt foreign thread.");
                 }
             }
-            int id = (int)LuaBindings.tointegerx(address, LuaBindings.REGISTRYINDEX, MemorySegment.NULL);
+            int id = LuaBindings.tointegerx(address, LuaBindings.REGISTRYINDEX, MemorySegment.NULL);
             LuaState state = (LuaState)ObjectRegistry.get(id);
             LuaThread thread = new LuaThread(state, address);
             state.threads.add(state);
             return thread;
         }
-        int id = (int)LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
+        int id = LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
         LuaBindings.settop(address, -2);
         return (LuaThread)ObjectRegistry.get(id);
     }
@@ -61,7 +64,7 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
         }
     }
 
-    // INTERFACE IMPLEMENTATION START
+    // INTERFACE IMPLEMENTATION START (marker to help with organization)
 
     public LuaValue getGlobal(String name) {
         checkIsAlive();
@@ -106,13 +109,14 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
         int results;
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment resultsSegment = arena.allocate(ValueLayout.JAVA_INT);
-            int code = LuaBindings.resume(address, getState().address, args.size(), resultsSegment);
-            LuaException.checkError(code, getState());
+            int code = LuaBindings.resume(address, MemorySegment.NULL, args.size(), resultsSegment);
+            LuaException.checkError(code, this);
             results = resultsSegment.get(ValueLayout.JAVA_INT, 0);
         }
         return VarArg.collect(this, results);
     }
 
+    // this method returns VarArg purely for syntax purposes
     public VarArg yield(VarArg args) {
         checkIsAlive();
         args.push(this);
@@ -147,7 +151,7 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
             return;
         }
         int code = LuaBindings.closethread(address, getState().address);
-        LuaException.checkError(code, getState());
+        LuaException.checkError(code, this);
         state.threads.remove(this);
         isClosed = true;
     }

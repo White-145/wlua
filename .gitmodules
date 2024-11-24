@@ -1,4 +1,0 @@
-[submodule "jni/lua"]
-	path = jni/lua
-	url = https://github.com/lua/lua.git
-	branch = v5.4

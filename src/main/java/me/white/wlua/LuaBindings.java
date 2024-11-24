@@ -5,12 +5,12 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
 class LuaBindings {
-    private static final MemoryLayout INTEGER_LAYOUT = ValueLayout.JAVA_LONG;
-    private static final MemoryLayout NUMBER_LAYOUT = ValueLayout.JAVA_DOUBLE;
-    private static final MemoryLayout UNSIGNED_LAYOUT = ValueLayout.JAVA_LONG;
-    private static final MemoryLayout CONTEXT_LAYOUT = ValueLayout.JAVA_LONG;
-    private static final MemoryLayout SIZE_LAYOUT = ValueLayout.JAVA_INT;
-    private static final MethodHandle ABSINDEX_HANDLE = downcallHandle("lua_absindex", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+    static final MemoryLayout INTEGER_LAYOUT = ValueLayout.JAVA_INT;
+    static final MemoryLayout NUMBER_LAYOUT = ValueLayout.JAVA_DOUBLE;
+    static final MemoryLayout UNSIGNED_LAYOUT = ValueLayout.JAVA_LONG;
+    static final MemoryLayout CONTEXT_LAYOUT = ValueLayout.JAVA_LONG;
+    static final MemoryLayout SIZE_LAYOUT = ValueLayout.JAVA_INT;
+    private static final MethodHandle ABSINDEX_HANDLE = downcallHandle("lua_absindex", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
     private static final MethodHandle ARITH_HANDLE = downcallHandle("lua_arith", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
     private static final MethodHandle ATPANIC_HANDLE = downcallHandle("lua_atpanic", FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     private static final MethodHandle CALLK_HANDLE = downcallHandle("lua_callk", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
@@ -84,6 +84,7 @@ class LuaBindings {
     private static final MethodHandle SETGLOBAL_HANDLE = downcallHandle("lua_setglobal", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     private static final MethodHandle SETHOOK_HANDLE = downcallHandle("lua_sethook", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
     private static final MethodHandle SETI_HANDLE = downcallHandle("lua_seti", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, INTEGER_LAYOUT));
+    private static final MethodHandle SETIUSERVALUE_HANDLE = downcallHandle("lua_setiuservalue", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
     private static final MethodHandle SETLOCAL_HANDLE = downcallHandle("lua_setlocal", FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
     private static final MethodHandle SETMETATABLE_HANDLE = downcallHandle("lua_setmetatable", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
     private static final MethodHandle SETTABLE_HANDLE = downcallHandle("lua_settable", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
@@ -151,7 +152,7 @@ class LuaBindings {
     private static final MethodHandle AUXILIARY_TESTUDATA_HANDLE = downcallHandle("luaL_testudata", FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
     private static final MethodHandle AUXILIARY_TOLSTRING_HANDLE = downcallHandle("luaL_tolstring", FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
     private static final MethodHandle AUXILIARY_TRACEBACK_HANDLE = downcallHandle("luaL_traceback", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
-    private static final MethodHandle AUXILIARY_TYPEERROR_HANDLE = downcallHandle("luaL_typerror", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+    private static final MethodHandle AUXILIARY_TYPEERROR_HANDLE = downcallHandle("luaL_typeerror", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
     private static final MethodHandle AUXILIARY_UNREF_HANDLE = downcallHandle("luaL_unref", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
     private static final MethodHandle AUXILIARY_WHERE_HANDLE = downcallHandle("luaL_where", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
     private static final MethodHandle OPEN_BASE_HANDLE = downcallHandle("luaopen_base", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
@@ -164,8 +165,8 @@ class LuaBindings {
     private static final MethodHandle OPEN_STRING_HANDLE = downcallHandle("luaopen_string", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
     private static final MethodHandle OPEN_TABLE_HANDLE = downcallHandle("luaopen_table", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
     private static final MethodHandle OPEN_UTF8_HANDLE = downcallHandle("luaopen_utf8", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-    private static final FunctionDescriptor ALLOC_DESCRIPTOR = FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG);
-    private static final FunctionDescriptor C_FUNCTION_DESCRIPTOR = FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT);
+    private static final FunctionDescriptor ALLOC_DESCRIPTOR = FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG);
+    private static final FunctionDescriptor C_FUNCTION_DESCRIPTOR = FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS);
     private static final FunctionDescriptor HOOK_DESCRIPTOR = FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS);
     private static final FunctionDescriptor K_FUNCTION_DESCRIPTOR = FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, CONTEXT_LAYOUT);
     private static final FunctionDescriptor READER_DESCRIPTOR = FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS);
@@ -178,26 +179,40 @@ class LuaBindings {
     private static final MethodHandle READER_HANDLE = upcallHandle(Reader.class, "apply", READER_DESCRIPTOR);
     private static final MethodHandle WARN_FUNCTION_HANDLE = upcallHandle(WarnFunction.class, "apply", WARN_FUNCTION_DESCRIPTOR);
     private static final MethodHandle WRITER_HANDLE = upcallHandle(Writer.class, "apply", WRITER_DESCRIPTOR);
-    private static final SymbolLookup SYMBOL_LOOKUP = SymbolLookup.loaderLookup().or(Linker.nativeLinker().defaultLookup());
     private static boolean isLoaded = false;
-    static final int REGISTRYINDEX = -1001000;
-    static final int RIDX_MAINTHREAD = 1;
-    static final int RIDX_GLOBALS = 2;
+    static final String VERSION_MAJOR = "5";
+    static final String VERSION_MINOR = "4";
+    static final String VERSION_RELEASE = "7";
+    static final int VERSION_NUM = 504;
+    static final int VERSION_RELEASE_NUM = 50407;
+    static final String VERSION = "Lua 5.4";
+    static final String RELEASE = "Lua 5.4.7";
+    static final String COPYRIGHT = "Lua 5.4.7  Copyright (C) 1994-2024 Lua.org, PUC-Rio";
+    static final String AUTHORS = "R. Ierusalimschy, L. H. de Figueiredo, W. Celes";
+    static final String SIGNATURE = "\u001bLua";
     static final int MULTRET = -1;
+    static final int REGISTRYINDEX = -1001000;
     static final int OK = 0;
     static final int YIELD = 1;
     static final int ERRRUN = 2;
     static final int ERRSYNTAX = 3;
     static final int ERRMEM = 4;
     static final int ERRERR = 5;
+    static final int TNONE = -1;
     static final int TNIL = 0;
     static final int TBOOLEAN = 1;
+    static final int TLIGHTUSERDATA = 2;
     static final int TNUMBER = 3;
     static final int TSTRING = 4;
     static final int TTABLE = 5;
     static final int TFUNCTION = 6;
     static final int TUSERDATA = 7;
     static final int TTHREAD = 8;
+    static final int NUMTYPES = 9;
+    static final int MINSTACK = 20;
+    static final int RIDX_MAINTHREAD = 1;
+    static final int RIDX_GLOBALS = 2;
+    static final int RIDX_LAST = 2;
     static final int OPADD = 0;
     static final int OPSUB = 1;
     static final int OPMUL = 2;
@@ -215,13 +230,33 @@ class LuaBindings {
     static final int OPEQ = 0;
     static final int OPLT = 1;
     static final int OPLE = 2;
+    static final int GCSTOP = 0;
+    static final int GCRESTART = 1;
+    static final int GCCOLLECT = 2;
+    static final int GCCOUNT = 3;
+    static final int GCCOUNTB = 4;
+    static final int GCSTEP = 5;
+    static final int GCSETPAUSE = 6;
+    static final int GCSETSTEPMUL = 7;
+    static final int GCISRUNNING = 9;
+    static final int GCGEN = 10;
+    static final int GCINC = 11;
+    static final int HOOKCALL = 0;
+    static final int HOOKRET = 1;
+    static final int HOOKLINE = 2;
+    static final int HOOKCOUNT = 3;
+    static final int HOOKTAILCALL = 4;
+    static final int MASKCALL = 1 << HOOKCALL;
+    static final int MASKRET = 1 << HOOKRET;
+    static final int MASKLINE = 1 << HOOKLINE;
+    static final int MASKCOUNT = 1 << HOOKCOUNT;
 
     private static MethodHandle downcallHandle(String name, FunctionDescriptor descriptor) {
         if (!isLoaded) {
             System.loadLibrary("lua54");
             isLoaded = true;
         }
-        MemorySegment address = SYMBOL_LOOKUP.find(name).orElseThrow(() -> new UnsatisfiedLinkError("lua is not loaded"));
+        MemorySegment address = SymbolLookup.loaderLookup().find(name).orElseThrow(() -> new UnsatisfiedLinkError("lua is not loaded"));
         return Linker.nativeLinker().downcallHandle(address, descriptor);
     }
 
@@ -233,628 +268,1244 @@ class LuaBindings {
         }
     }
 
-    private static Object invoke(MethodHandle handle, Object... args) {
+    static int absindex(MemorySegment L, int idx) {
         try {
-            return handle.invokeExact(args);
+            return (int)ABSINDEX_HANDLE.invokeExact(L, idx);
         } catch (Throwable e) {
             throw new AssertionError(e);
         }
     }
 
-    static int absindex(MemorySegment L, int idx) {
-        return (Integer)invoke(ABSINDEX_HANDLE, L, idx);
-    }
-
     static void arith(MemorySegment L, int op) {
-        invoke(ARITH_HANDLE, L, op);
+        try {
+            ARITH_HANDLE.invokeExact(L, op);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment atpanic(MemorySegment L, MemorySegment panicf) {
-        return (MemorySegment)invoke(ATPANIC_HANDLE, L, panicf);
+        try {
+            return (MemorySegment)ATPANIC_HANDLE.invokeExact(L, panicf);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void callk(MemorySegment L, int nargs, int nresults, int ctx, MemorySegment k) {
-        invoke(CALLK_HANDLE, L, nargs, nresults, ctx, k);
+        try {
+            CALLK_HANDLE.invokeExact(L, nargs, nresults, ctx, k);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int checkstack(MemorySegment L, int n) {
-        return (Integer)invoke(CHECKSTACK_HANDLE, L, n);
+        try {
+            return (int)CHECKSTACK_HANDLE.invokeExact(L, n);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void close(MemorySegment L) {
-        invoke(CLOSE_HANDLE, L);
+        try {
+            CLOSE_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void closeslot(MemorySegment L, int index) {
-        invoke(CLOSESLOT_HANDLE, L, index);
+        try {
+            CLOSESLOT_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int closethread(MemorySegment L, MemorySegment from) {
-        return (Integer)invoke(CLOSETHREAD_HANDLE, L, from);
+        try {
+            return (int)CLOSETHREAD_HANDLE.invokeExact(L, from);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int compare(MemorySegment L, int index1, int index2, int op) {
-        return (Integer)invoke(COMPARE_HANDLE, L, index1, index2, op);
+        try {
+            return (int)COMPARE_HANDLE.invokeExact(L, index1, index2, op);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void concat(MemorySegment L, int n) {
-        invoke(CONCAT_HANDLE, L, n);
+        try {
+            CONCAT_HANDLE.invokeExact(L, n);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void copy(MemorySegment L, int fromidx, int toidx) {
-        invoke(COPY_HANDLE, L, fromidx, toidx);
+        try {
+            COPY_HANDLE.invokeExact(L, fromidx, toidx);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void createtable(MemorySegment L, int narr, int nrec) {
-        invoke(CREATETABLE_HANDLE, L, narr, nrec);
+        try {
+            CREATETABLE_HANDLE.invokeExact(L, narr, nrec);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int dump(MemorySegment L, MemorySegment writer, MemorySegment data, int strip) {
-        return (Integer)invoke(DUMP_HANDLE, L, writer, data, strip);
+        try {
+            return (int)DUMP_HANDLE.invokeExact(L, writer, data, strip);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int error(MemorySegment L) {
-        return (Integer)invoke(ERROR_HANDLE, L);
+        try {
+            return (int)ERROR_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int gc(MemorySegment L, int what) {
-        return (Integer)invoke(GC_HANDLE, L, what);
+        try {
+            return (int)GC_HANDLE.invokeExact(L, what);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int gcStep(MemorySegment L, int what, int stepsize) {
-        return (Integer)invoke(GC_STEP_HANDLE, L, what, stepsize);
+        try {
+            return (int)GC_STEP_HANDLE.invokeExact(L, what, stepsize);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int gcInc(MemorySegment L, int what, int pause, int stepmul, int stepsize) {
-        return (Integer)invoke(GC_INC_HANDLE, L, what, pause, stepmul, stepsize);
+        try {
+            return (int)GC_INC_HANDLE.invokeExact(L, what, pause, stepmul, stepsize);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int gcGen(MemorySegment L, int what, int minormul, int majormul) {
-        return (Integer)invoke(GC_GEN_HANDLE, L, what, minormul, majormul);
+        try {
+            return (int)GC_GEN_HANDLE.invokeExact(L, what, minormul, majormul);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment getallocf(MemorySegment L, MemorySegment ud) {
-        return (MemorySegment)invoke(GETALLOCF_HANDLE, L, ud);
+        try {
+            return (MemorySegment)GETALLOCF_HANDLE.invokeExact(L, ud);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int getfield(MemorySegment L, int index, MemorySegment k) {
-        return (Integer)invoke(GETFIELD_HANDLE, L, index, k);
+        try {
+            return (int)GETFIELD_HANDLE.invokeExact(L, index, k);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int getglobal(MemorySegment L, MemorySegment name) {
-        return (Integer)invoke(GETGLOBAL_HANDLE, L, name);
+        try {
+            return (int)GETGLOBAL_HANDLE.invokeExact(L, name);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment gethook(MemorySegment L) {
-        return (MemorySegment)invoke(GETHOOK_HANDLE, L);
+        try {
+            return (MemorySegment)GETHOOK_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int gethookcount(MemorySegment L) {
-        return (Integer)invoke(GETHOOKCOUNT_HANDLE, L);
+        try {
+            return (int)GETHOOKCOUNT_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int gethookmask(MemorySegment L) {
-        return (Integer)invoke(GETHOOKMASK_HANDLE, L);
+        try {
+            return (int)GETHOOKMASK_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
-    static int geti(MemorySegment L, int index, long i) {
-        return (Integer)invoke(GETI_HANDLE, L, index, i);
+    static int geti(MemorySegment L, int index, int i) {
+        try {
+            return (int)GETI_HANDLE.invokeExact(L, index, i);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int getinfo(MemorySegment L, MemorySegment what, MemorySegment ar) {
-        return (Integer)invoke(GETINFO_HANDLE, L, what, ar);
+        try {
+            return (int)GETINFO_HANDLE.invokeExact(L, what, ar);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int getiuservalue(MemorySegment L, int index, int n) {
-        return (Integer)invoke(GETIUSERVALUE_HANDLE, L, index, n);
+        try {
+            return (int)GETIUSERVALUE_HANDLE.invokeExact(L, index, n);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment getlocal(MemorySegment L, MemorySegment ar, int n) {
-        return (MemorySegment)invoke(GETLOCAL_HANDLE, L, ar, n);
+        try {
+            return (MemorySegment)GETLOCAL_HANDLE.invokeExact(L, ar, n);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int getmetatable(MemorySegment L, MemorySegment tname) {
-        return (Integer)invoke(GETMETATABLE_HANDLE, L, tname);
+        try {
+            return (int)GETMETATABLE_HANDLE.invokeExact(L, tname);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int getstack(MemorySegment L, int level, MemorySegment ar) {
-        return (Integer)invoke(GETSTACK_HANDLE, L, level, ar);
+        try {
+            return (int)GETSTACK_HANDLE.invokeExact(L, level, ar);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int gettable(MemorySegment L, int index) {
-        return (Integer)invoke(GETTABLE_HANDLE, L, index);
+        try {
+            return (int)GETTABLE_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int gettop(MemorySegment L) {
-        return (Integer)invoke(GETTOP_HANDLE, L);
+        try {
+            return (int)GETTOP_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment getupvalue(MemorySegment L, int funcindex, int n) {
-        return (MemorySegment)invoke(GETUPVALUE_HANDLE, L, funcindex, n);
+        try {
+            return (MemorySegment)GETUPVALUE_HANDLE.invokeExact(L, funcindex, n);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int iscfunction(MemorySegment L, int index) {
-        return (Integer)invoke(ISCFUNCTION_HANDLE, L, index);
+        try {
+            return (int)ISCFUNCTION_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int isinteger(MemorySegment L, int index) {
-        return (Integer)invoke(ISINTEGER_HANDLE, L, index);
+        try {
+            return (int)ISINTEGER_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int isnumber(MemorySegment L, int index) {
-        return (Integer)invoke(ISNUMBER_HANDLE, L, index);
+        try {
+            return (int)ISNUMBER_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int isstring(MemorySegment L, int index) {
-        return (Integer)invoke(ISSTRING_HANDLE, L, index);
+        try {
+            return (int)ISSTRING_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int isuserdata(MemorySegment L, int index) {
-        return (Integer)invoke(ISUSERDATA_HANDLE, L, index);
+        try {
+            return (int)ISUSERDATA_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int isyieldable(MemorySegment L) {
-        return (Integer)invoke(ISYIELDABLE_HANDLE, L);
+        try {
+            return (int)ISYIELDABLE_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void len(MemorySegment L, int index) {
-        invoke(LEN_HANDLE, L, index);
+        try {
+            LEN_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int load(MemorySegment L, MemorySegment reader, MemorySegment data, MemorySegment chunkname, MemorySegment mode) {
-        return (Integer)invoke(LOAD_HANDLE, L, reader, data, chunkname, mode);
+        try {
+            return (int)LOAD_HANDLE.invokeExact(L, reader, data, chunkname, mode);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment newstate(MemorySegment f, MemorySegment ud) {
-        return (MemorySegment)invoke(NEWSTATE_HANDLE, f, ud);
+        try {
+            return (MemorySegment)NEWSTATE_HANDLE.invokeExact(f, ud);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment newthread(MemorySegment L) {
-        return (MemorySegment)invoke(NEWTHREAD_HANDLE, L);
+        try {
+            return (MemorySegment)NEWTHREAD_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment newuserdatauv(MemorySegment L, int size, int nuvalue) {
-        return (MemorySegment)invoke(NEWUSERDATAUV_HANDLE, L, size, nuvalue);
+        try {
+            return (MemorySegment)NEWUSERDATAUV_HANDLE.invokeExact(L, size, nuvalue);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int next(MemorySegment L, int index) {
-        return (Integer)invoke(NEXT_HANDLE, L, index);
+        try {
+            return (int)NEXT_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int pcallk(MemorySegment L, int nargs, int nresults, int msgh, long ctx, MemorySegment k) {
-        return (Integer)invoke(PCALLK_HANDLE, L, nargs, nresults, msgh, ctx, k);
+        try {
+            return (int)PCALLK_HANDLE.invokeExact(L, nargs, nresults, msgh, ctx, k);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void pushboolean(MemorySegment L, int b) {
-        invoke(PUSHBOOLEAN_HANDLE, L, b);
+        try {
+            PUSHBOOLEAN_HANDLE.invokeExact(L, b);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void pushcclosure(MemorySegment L, MemorySegment fn, int n) {
-        invoke(PUSHCCLOSURE_HANDLE, L, fn, n);
+        try {
+            PUSHCCLOSURE_HANDLE.invokeExact(L, fn, n);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment pushfstring(MemorySegment L, MemorySegment fmt) {
-        return (MemorySegment)invoke(PUSHFSTRING_HANDLE, L, fmt);
+        try {
+            return (MemorySegment)PUSHFSTRING_HANDLE.invokeExact(L, fmt);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
-    static void pushinteger(MemorySegment L, long n) {
-        invoke(PUSHINTEGER_HANDLE, L, n);
+    static void pushinteger(MemorySegment L, int n) {
+        try {
+            PUSHINTEGER_HANDLE.invokeExact(L, n);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void pushlightuserdata(MemorySegment L, MemorySegment p) {
-        invoke(PUSHLIGHTUSERDATA_HANDLE, L, p);
+        try {
+            PUSHLIGHTUSERDATA_HANDLE.invokeExact(L, p);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment pushlstring(MemorySegment L, MemorySegment s, int len) {
-        return (MemorySegment)invoke(PUSHLSTRING_HANDLE, L, s, len);
+        try {
+            return (MemorySegment)PUSHLSTRING_HANDLE.invokeExact(L, s, len);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void pushnil(MemorySegment L) {
-        invoke(PUSHNIL_HANDLE, L);
+        try {
+            PUSHNIL_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void pushnumber(MemorySegment L, double n) {
-        invoke(PUSHNUMBER_HANDLE, L, n);
+        try {
+            PUSHNUMBER_HANDLE.invokeExact(L, n);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment pushstring(MemorySegment L, MemorySegment s) {
-        return (MemorySegment)invoke(PUSHSTRING_HANDLE, L, s);
+        try {
+            return (MemorySegment)PUSHSTRING_HANDLE.invokeExact(L, s);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int pushthread(MemorySegment L) {
-        return (Integer)invoke(PUSHTHREAD_HANDLE, L);
+        try {
+            return (int)PUSHTHREAD_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void pushvalue(MemorySegment L, int index) {
-        invoke(PUSHVALUE_HANDLE, L, index);
+        try {
+            PUSHVALUE_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment pushvfstring(MemorySegment L, MemorySegment fmt, MemorySegment argp) {
-        return (MemorySegment)invoke(PUSHVFSTRING_HANDLE, L, fmt, argp);
+        try {
+            return (MemorySegment)PUSHVFSTRING_HANDLE.invokeExact(L, fmt, argp);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int rawequal(MemorySegment L, int index1, int index2) {
-        return (Integer)invoke(RAWEQUAL_HANDLE, L, index1, index2);
+        try {
+            return (int)RAWEQUAL_HANDLE.invokeExact(L, index1, index2);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int rawget(MemorySegment L, int index) {
-        return (Integer)invoke(RAWGET_HANDLE, L, index);
+        try {
+            return (int)RAWGET_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
-    static int rawgeti(MemorySegment L, int index, long n) {
-        return (Integer)invoke(RAWGETI_HANDLE, L, index, n);
+    static int rawgeti(MemorySegment L, int index, int n) {
+        try {
+            return (int)RAWGETI_HANDLE.invokeExact(L, index, n);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int rawgetp(MemorySegment L, int index, MemorySegment p) {
-        return (Integer)invoke(RAWGETP_HANDLE, L, index, p);
+        try {
+            return (int)RAWGETP_HANDLE.invokeExact(L, index, p);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static long rawlen(MemorySegment L, int index) {
-        return (Long)invoke(RAWLEN_HANDLE, L, index);
+        try {
+            return (long)RAWLEN_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void rawset(MemorySegment L, int index) {
-        invoke(RAWSET_HANDLE, L, index);
+        try {
+            RAWSET_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
-    static void rawseti(MemorySegment L, int index, long i) {
-        invoke(RAWSETI_HANDLE, L, index, i);
+    static void rawseti(MemorySegment L, int index, int i) {
+        try {
+            RAWSETI_HANDLE.invokeExact(L, index, i);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void rawsetp(MemorySegment L, int index, MemorySegment p) {
-        invoke(RAWSETP_HANDLE, L, index, p);
+        try {
+            RAWSETP_HANDLE.invokeExact(L, index, p);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int resetthread(MemorySegment L) {
-        return (Integer)invoke(RESETTHREAD_HANDLE, L);
+        try {
+            return (int)RESETTHREAD_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int resume(MemorySegment L, MemorySegment from, int nargs, MemorySegment nresults) {
-        return (Integer)invoke(RESUME_HANDLE, L, from, nargs, nresults);
+        try {
+            return (int)RESUME_HANDLE.invokeExact(L, from, nargs, nresults);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void rotate(MemorySegment L, int idx, int n) {
-        invoke(ROTATE_HANDLE, L, idx, n);
+        try {
+            ROTATE_HANDLE.invokeExact(L, idx, n);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void setallocf(MemorySegment L, MemorySegment f, MemorySegment ud) {
-        invoke(SETALLOCF_HANDLE, L, f, ud);
+        try {
+            SETALLOCF_HANDLE.invokeExact(L, f, ud);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void setfield(MemorySegment L, int index, MemorySegment k) {
-        invoke(SETFIELD_HANDLE, L, index, k);
+        try {
+            SETFIELD_HANDLE.invokeExact(L, index, k);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void setglobal(MemorySegment L, MemorySegment name) {
-        invoke(SETGLOBAL_HANDLE, L, name);
+        try {
+            SETGLOBAL_HANDLE.invokeExact(L, name);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void sethook(MemorySegment L, MemorySegment f, int mask, int count) {
-        invoke(SETHOOK_HANDLE, L, f, mask, count);
+        try {
+            SETHOOK_HANDLE.invokeExact(L, f, mask, count);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
-    static void seti(MemorySegment L, int index, long n) {
-        invoke(SETI_HANDLE, L, index, n);
+    static void seti(MemorySegment L, int index, int n) {
+        try {
+            SETI_HANDLE.invokeExact(L, index, n);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    static int setiuservalue(MemorySegment L, int index, int n) {
+        try {
+            return (int)SETIUSERVALUE_HANDLE.invokeExact(L, index, n);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment setlocal(MemorySegment L, MemorySegment ar, int n) {
-        return (MemorySegment)invoke(SETLOCAL_HANDLE, L, ar, n);
+        try {
+            return (MemorySegment)SETLOCAL_HANDLE.invokeExact(L, ar, n);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int setmetatable(MemorySegment L, int index) {
-        return (Integer)invoke(SETMETATABLE_HANDLE, L, index);
+        try {
+            return (int)SETMETATABLE_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void settable(MemorySegment L, int index) {
-        invoke(SETTABLE_HANDLE, L, index);
+        try {
+            SETTABLE_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void settop(MemorySegment L, int index) {
-        invoke(SETTOP_HANDLE, L, index);
+        try {
+            SETTOP_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment setupvalue(MemorySegment L, int funcindex, int n) {
-        return (MemorySegment)invoke(SETUPVALUE_HANDLE, L, funcindex, n);
+        try {
+            return (MemorySegment)SETUPVALUE_HANDLE.invokeExact(L, funcindex, n);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void setwarnf(MemorySegment L, MemorySegment f, MemorySegment ud) {
-        invoke(SETWARNF_HANDLE, L, f, ud);
+        try {
+            SETWARNF_HANDLE.invokeExact(L, f, ud);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int status(MemorySegment L) {
-        return (Integer)invoke(STATUS_HANDLE, L);
+        try {
+            return (int)STATUS_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int stringtonumber(MemorySegment L, MemorySegment s) {
-        return (Integer)invoke(STRINGTONUMBER_HANDLE, L, s);
+        try {
+            return (int)STRINGTONUMBER_HANDLE.invokeExact(L, s);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int toboolean(MemorySegment L, int index) {
-        return (Integer)invoke(TOBOOLEAN_HANDLE, L, index);
+        try {
+            return (int)TOBOOLEAN_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment tocfunction(MemorySegment L, int index) {
-        return (MemorySegment)invoke(TOCFUNCTION_HANDLE, L, index);
+        try {
+            return (MemorySegment)TOCFUNCTION_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void toclose(MemorySegment L, int index) {
-        invoke(TOCLOSE_HANDLE, L, index);
+        try {
+            TOCLOSE_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
-    static long tointegerx(MemorySegment L, int index, MemorySegment isnum) {
-        return (Long)invoke(TOINTEGERX_HANDLE, L, index, isnum);
+    static int tointegerx(MemorySegment L, int index, MemorySegment isnum) {
+        try {
+            return (int)TOINTEGERX_HANDLE.invokeExact(L, index, isnum);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment tolstring(MemorySegment L, int index, MemorySegment len) {
-        return (MemorySegment)invoke(TOLSTRING_HANDLE, L, index, len);
+        try {
+            return (MemorySegment)TOLSTRING_HANDLE.invokeExact(L, index, len);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static double tonumberx(MemorySegment L, int index, MemorySegment isnum) {
-        return (Double)invoke(TONUMBERX_HANDLE, L, index, isnum);
+        try {
+            return (double)TONUMBERX_HANDLE.invokeExact(L, index, isnum);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment topointer(MemorySegment L, int index) {
-        return (MemorySegment)invoke(TOPOINTER_HANDLE, L, index);
+        try {
+            return (MemorySegment)TOPOINTER_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment tothread(MemorySegment L, int index) {
-        return (MemorySegment)invoke(TOTHREAD_HANDLE, L, index);
+        try {
+            return (MemorySegment)TOTHREAD_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment touserdata(MemorySegment L, int index) {
-        return (MemorySegment)invoke(TOUSERDATA_HANDLE, L, index);
+        try {
+            return (MemorySegment)TOUSERDATA_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int type(MemorySegment L, int index) {
-        return (Integer)invoke(TYPE_HANDLE, L, index);
+        try {
+            return (int)TYPE_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment typename(MemorySegment L, int tp) {
-        return (MemorySegment)invoke(TYPENAME_HANDLE, L, tp);
+        try {
+            return (MemorySegment)TYPENAME_HANDLE.invokeExact(L, tp);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment upvalueid(MemorySegment L, int funcindex, int n) {
-        return (MemorySegment)invoke(UPVALUEID_HANDLE, L, funcindex, n);
+        try {
+            return (MemorySegment)UPVALUEID_HANDLE.invokeExact(L, funcindex, n);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void upvaluejoin(MemorySegment L, int funcindex1, int n1, int funcindex2, int n2) {
-        invoke(UPVALUEJOIN_HANDLE, L, funcindex1, n1, funcindex2, n2);
+        try {
+            UPVALUEJOIN_HANDLE.invokeExact(L, funcindex1, n1, funcindex2, n2);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static double version(MemorySegment L) {
-        return (Double)invoke(VERSION_HANDLE, L);
+        try {
+            return (double)VERSION_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void warning(MemorySegment L, MemorySegment msg, int tocont) {
-        invoke(WARNING_HANDLE, L, msg, tocont);
+        try {
+            WARNING_HANDLE.invokeExact(L, msg, tocont);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void xmove(MemorySegment from, MemorySegment to, int n) {
-        invoke(XMOVE_HANDLE, from, to, n);
+        try {
+            XMOVE_HANDLE.invokeExact(from, to, n);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int yieldk(MemorySegment L, int nresults, long ctx, MemorySegment k) {
-        return (Integer)invoke(YIELDK_HANDLE, L, nresults, ctx, k);
+        try {
+            return (int)YIELDK_HANDLE.invokeExact(L, nresults, ctx, k);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment auxiliaryAddgsub(MemorySegment B, MemorySegment s, MemorySegment p, MemorySegment r) {
-        return (MemorySegment)invoke(AUXILIARY_ADDGSUB_HANDLE, B, s, p, r);
+        try {
+            return (MemorySegment)AUXILIARY_ADDGSUB_HANDLE.invokeExact(B, s, p, r);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void auxiliaryAddlstring(MemorySegment B, MemorySegment s, int l) {
-        invoke(AUXILIARY_ADDLSTRING_HANDLE, B, s, l);
+        try {
+            AUXILIARY_ADDLSTRING_HANDLE.invokeExact(B, s, l);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void auxiliaryAddstring(MemorySegment B, MemorySegment s) {
-        invoke(AUXILIARY_ADDSTRING_HANDLE, B, s);
+        try {
+            AUXILIARY_ADDSTRING_HANDLE.invokeExact(B, s);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void auxiliaryAddvalue(MemorySegment B) {
-        invoke(AUXILIARY_ADDVALUE_HANDLE, B);
+        try {
+            AUXILIARY_ADDVALUE_HANDLE.invokeExact(B);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int auxiliaryArgerror(MemorySegment L, int arg, MemorySegment extramsg) {
-        return (Integer)invoke(AUXILIARY_ARGERROR_HANDLE, L, arg, extramsg);
+        try {
+            return (int)AUXILIARY_ARGERROR_HANDLE.invokeExact(L, arg, extramsg);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int auxiliaryBuffinit(MemorySegment L, MemorySegment B) {
-        return (Integer)invoke(AUXILIARY_BUFFINIT_HANDLE, L, B);
+        try {
+            return (int)AUXILIARY_BUFFINIT_HANDLE.invokeExact(L, B);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment auxiliaryBuffinitsize(MemorySegment L, MemorySegment B, int sz) {
-        return (MemorySegment)invoke(AUXILIARY_BUFFINITSIZE_HANDLE, L, B, sz);
+        try {
+            return (MemorySegment)AUXILIARY_BUFFINITSIZE_HANDLE.invokeExact(L, B, sz);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int auxiliaryCallmeta(MemorySegment L, int obj, MemorySegment e) {
-        return (Integer)invoke(AUXILIARY_CALLMETA_HANDLE, L, obj, e);
+        try {
+            return (int)AUXILIARY_CALLMETA_HANDLE.invokeExact(L, obj, e);
+        } catch (Throwable ex) {
+            throw new AssertionError(ex);
+        }
     }
 
     static void auxiliaryCheckany(MemorySegment L, int arg) {
-        invoke(AUXILIARY_CHECKANY_HANDLE, L, arg);
+        try {
+            AUXILIARY_CHECKANY_HANDLE.invokeExact(L, arg);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
-    static long auxiliaryCheckinteger(MemorySegment L, int arg) {
-        return (Long)invoke(AUXILIARY_CHECKINTEGER_HANDLE, L, arg);
+    static int auxiliaryCheckinteger(MemorySegment L, int arg) {
+        try {
+            return (int)AUXILIARY_CHECKINTEGER_HANDLE.invokeExact(L, arg);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment auxiliaryChecklstring(MemorySegment L, int arg, MemorySegment l) {
-        return (MemorySegment)invoke(AUXILIARY_CHECKLSTRING_HANDLE, L, arg, l);
+        try {
+            return (MemorySegment)AUXILIARY_CHECKLSTRING_HANDLE.invokeExact(L, arg, l);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static double auxiliaryChecknumber(MemorySegment L, int arg) {
-        return (Double)invoke(AUXILIARY_CHECKNUMBER_HANDLE, L, arg);
+        try {
+            return (double)AUXILIARY_CHECKNUMBER_HANDLE.invokeExact(L, arg);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int auxiliaryCheckoption(MemorySegment L, int arg, MemorySegment def, MemorySegment lst) {
-        return (Integer)invoke(AUXILIARY_CHECKOPTION_HANDLE, L, arg, def, lst);
+        try {
+            return (int)AUXILIARY_CHECKOPTION_HANDLE.invokeExact(L, arg, def, lst);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int auxiliaryCheckstack(MemorySegment L, int sz, MemorySegment msg) {
-        return (Integer)invoke(AUXILIARY_CHECKSTACK_HANDLE, L, sz, msg);
+        try {
+            return (int)AUXILIARY_CHECKSTACK_HANDLE.invokeExact(L, sz, msg);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void auxiliaryChecktype(MemorySegment L, int arg, int t) {
-        invoke(AUXILIARY_CHECKTYPE_HANDLE, L, arg, t);
+        try {
+            AUXILIARY_CHECKTYPE_HANDLE.invokeExact(L, arg, t);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment auxiliaryCheckudata(MemorySegment L, int arg, MemorySegment tname) {
-        return (MemorySegment)invoke(AUXILIARY_CHECKUDATA_HANDLE, L, arg, tname);
+        try {
+            return (MemorySegment)AUXILIARY_CHECKUDATA_HANDLE.invokeExact(L, arg, tname);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void auxiliaryCheckversion_(MemorySegment L) {
-        invoke(AUXILIARY_CHECKVERSION__HANDLE, L);
+        try {
+            AUXILIARY_CHECKVERSION__HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int auxiliaryError(MemorySegment L, MemorySegment fmt) {
-        return (Integer)invoke(AUXILIARY_ERROR_HANDLE, L, fmt);
+        try {
+            return (int)AUXILIARY_ERROR_HANDLE.invokeExact(L, fmt);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int auxiliaryExecresult(MemorySegment L, int stat) {
-        return (Integer)invoke(AUXILIARY_EXECRESULT_HANDLE, L, stat);
+        try {
+            return (int)AUXILIARY_EXECRESULT_HANDLE.invokeExact(L, stat);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int auxiliaryFileresult(MemorySegment L, int stat, MemorySegment fname) {
-        return (Integer)invoke(AUXILIARY_FILERESULT_HANDLE, L, stat, fname);
+        try {
+            return (int)AUXILIARY_FILERESULT_HANDLE.invokeExact(L, stat, fname);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int auxiliaryGetmetafield(MemorySegment L, int obj, MemorySegment e) {
-        return (Integer)invoke(AUXILIARY_GETMETAFIELD_HANDLE, L, obj, e);
+        try {
+            return (int)AUXILIARY_GETMETAFIELD_HANDLE.invokeExact(L, obj, e);
+        } catch (Throwable ex) {
+            throw new AssertionError(e);
+        }
     }
 
     static int auxiliaryGetsubtable(MemorySegment L, int idx, MemorySegment fname) {
-        return (Integer)invoke(AUXILIARY_GETSUBTABLE_HANDLE, L, idx, fname);
+        try {
+            return (int)AUXILIARY_GETSUBTABLE_HANDLE.invokeExact(L, idx, fname);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment auxiliaryGsub(MemorySegment L, MemorySegment s, MemorySegment p, MemorySegment r) {
-        return (MemorySegment)invoke(AUXILIARY_GSUB_HANDLE, L, s, p, r);
+        try {
+            return (MemorySegment)AUXILIARY_GSUB_HANDLE.invokeExact(L, s, p, r);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
-    static long auxiliaryLen(MemorySegment L, int index) {
-        return (Long)invoke(AUXILIARY_LEN_HANDLE, L, index);
+    static int auxiliaryLen(MemorySegment L, int index) {
+        try {
+            return (int)AUXILIARY_LEN_HANDLE.invokeExact(L, index);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int auxiliaryLoadbufferx(MemorySegment L, MemorySegment buff, int sz, MemorySegment name, MemorySegment mode) {
-        return (Integer)invoke(AUXILIARY_LOADBUFFERX_HANDLE, L, buff, sz, name, mode);
+        try {
+            return (int)AUXILIARY_LOADBUFFERX_HANDLE.invokeExact(L, buff, sz, name, mode);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int auxiliaryLoadfilex(MemorySegment L, MemorySegment filename, MemorySegment mode) {
-        return (Integer)invoke(AUXILIARY_LOADFILEX_HANDLE, L, filename, mode);
+        try {
+            return (int)AUXILIARY_LOADFILEX_HANDLE.invokeExact(L, filename, mode);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int auxiliaryLoadstring(MemorySegment L, MemorySegment s) {
-        return (Integer)invoke(AUXILIARY_LOADSTRING_HANDLE, L, s);
+        try {
+            return (int)AUXILIARY_LOADSTRING_HANDLE.invokeExact(L, s);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int auxiliaryNewmetatable(MemorySegment L, MemorySegment tname) {
-        return (Integer)invoke(AUXILIARY_NEWMETATABLE_HANDLE, L, tname);
+        try {
+            return (int)AUXILIARY_NEWMETATABLE_HANDLE.invokeExact(L, tname);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment auxiliaryNewstate() {
-        return (MemorySegment)invoke(AUXILIARY_NEWSTATE_HANDLE);
+        try {
+            return (MemorySegment)AUXILIARY_NEWSTATE_HANDLE.invokeExact();
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void auxiliaryOpenlibs(MemorySegment L) {
-        invoke(AUXILIARY_OPENLIBS_HANDLE, L);
+        try {
+            AUXILIARY_OPENLIBS_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
-    static long auxiliaryOptinteger(MemorySegment L, int arg, long d) {
-        return (Long)invoke(AUXILIARY_OPTINTEGER_HANDLE, L, arg, d);
+    static int auxiliaryOptinteger(MemorySegment L, int arg, long d) {
+        try {
+            return (int)AUXILIARY_OPTINTEGER_HANDLE.invokeExact(L, arg, d);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment auxiliaryOptlstring(MemorySegment L, int arg, MemorySegment d, MemorySegment l) {
-        return (MemorySegment)invoke(AUXILIARY_OPTLSTRING_HANDLE, L, arg, d, l);
+        try {
+            return (MemorySegment)AUXILIARY_OPTLSTRING_HANDLE.invokeExact(L, arg, d, l);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment auxiliaryPrepbuffsize(MemorySegment B, int sz) {
-        return (MemorySegment)invoke(AUXILIARY_PREPBUFFSIZE_HANDLE, B, sz);
+        try {
+            return (MemorySegment)AUXILIARY_PREPBUFFSIZE_HANDLE.invokeExact(B, sz);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void auxiliaryPushresult(MemorySegment B) {
-        invoke(AUXILIARY_PUSHRESULT_HANDLE, B);
+        try {
+            AUXILIARY_PUSHRESULT_HANDLE.invokeExact(B);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void auxiliaryPushresultsize(MemorySegment B, int sz) {
-        invoke(AUXILIARY_PUSHRESULTSIZE_HANDLE, B, sz);
+        try {
+            AUXILIARY_PUSHRESULTSIZE_HANDLE.invokeExact(B, sz);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int auxiliaryRef(MemorySegment L, int t) {
-        return (Integer)invoke(AUXILIARY_REF_HANDLE, L, t);
+        try {
+            return (int)AUXILIARY_REF_HANDLE.invokeExact(L, t);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void auxiliaryRequiref(MemorySegment L, MemorySegment modname, MemorySegment openf, int glb) {
-        invoke(AUXILIARY_REQUIREF_HANDLE, L, modname, openf, glb);
+        try {
+            AUXILIARY_REQUIREF_HANDLE.invokeExact(L, modname, openf, glb);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void auxiliarySetfuncs(MemorySegment L, MemorySegment l, int nup) {
-        invoke(AUXILIARY_SETFUNCS_HANDLE, L, l, nup);
+        try {
+            AUXILIARY_SETFUNCS_HANDLE.invokeExact(L, l, nup);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void auxiliarySetmetatable(MemorySegment L, MemorySegment tname) {
-        invoke(AUXILIARY_SETMETATABLE_HANDLE, L, tname);
+        try {
+            AUXILIARY_SETMETATABLE_HANDLE.invokeExact(L, tname);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment auxiliaryTestudata(MemorySegment L, int arg, MemorySegment tname) {
-        return (MemorySegment)invoke(AUXILIARY_TESTUDATA_HANDLE, L, arg, tname);
+        try {
+            return (MemorySegment)AUXILIARY_TESTUDATA_HANDLE.invokeExact(L, arg, tname);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment auxiliaryTolstring(MemorySegment L, int idx, MemorySegment len) {
-        return (MemorySegment)invoke(AUXILIARY_TOLSTRING_HANDLE, L, idx, len);
+        try {
+            return (MemorySegment)AUXILIARY_TOLSTRING_HANDLE.invokeExact(L, idx, len);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void auxiliaryTraceback(MemorySegment L, MemorySegment L1, MemorySegment msg, int level) {
-        invoke(AUXILIARY_TRACEBACK_HANDLE, L, L1, msg, level);
+        try {
+            AUXILIARY_TRACEBACK_HANDLE.invokeExact(L, L1, msg, level);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
-    static int auxiliaryTyperror(MemorySegment L, int arg, MemorySegment tname) {
-        return (Integer)invoke(AUXILIARY_TYPEERROR_HANDLE, L, arg, tname);
+    static int auxiliaryTypeerror(MemorySegment L, int arg, MemorySegment tname) {
+        try {
+            return (int)AUXILIARY_TYPEERROR_HANDLE.invokeExact(L, arg, tname);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void auxiliaryUnref(MemorySegment L, int t, int ref) {
-        invoke(AUXILIARY_UNREF_HANDLE, L, t, ref);
+        try {
+            AUXILIARY_UNREF_HANDLE.invokeExact(L, t, ref);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static void auxiliaryWhere(MemorySegment L, int lvl) {
-        invoke(AUXILIARY_WHERE_HANDLE, L, lvl);
+        try {
+            AUXILIARY_WHERE_HANDLE.invokeExact(L, lvl);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int openBase(MemorySegment L) {
-        return (Integer)invoke(OPEN_BASE_HANDLE, L);
+        try {
+            return (int)OPEN_BASE_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int openCoroutine(MemorySegment L) {
-        return (Integer)invoke(OPEN_COROUTINE_HANDLE, L);
+        try {
+            return (int)OPEN_COROUTINE_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int openDebug(MemorySegment L) {
-        return (Integer)invoke(OPEN_DEBUG_HANDLE, L);
+        try {
+            return (int)OPEN_DEBUG_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int openIo(MemorySegment L) {
-        return (Integer)invoke(OPEN_IO_HANDLE, L);
+        try {
+            return (int)OPEN_IO_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int openMath(MemorySegment L) {
-        return (Integer)invoke(OPEN_MATH_HANDLE, L);
+        try {
+            return (int)OPEN_MATH_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int openOs(MemorySegment L) {
-        return (Integer)invoke(OPEN_OS_HANDLE, L);
+        try {
+            return (int)OPEN_OS_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int openPackage(MemorySegment L) {
-        return (Integer)invoke(OPEN_PACKAGE_HANDLE, L);
+        try {
+            return (int)OPEN_PACKAGE_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int openString(MemorySegment L) {
-        return (Integer)invoke(OPEN_STRING_HANDLE, L);
+        try {
+            return (int)OPEN_STRING_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int openTable(MemorySegment L) {
-        return (Integer)invoke(OPEN_TABLE_HANDLE, L);
+        try {
+            return (int)OPEN_TABLE_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static int openUtf8(MemorySegment L) {
-        return (Integer)invoke(OPEN_UTF8_HANDLE, L);
+        try {
+            return (int)OPEN_UTF8_HANDLE.invokeExact(L);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
     }
 
     static MemorySegment stubAlloc(Arena arena, Alloc alloc) {

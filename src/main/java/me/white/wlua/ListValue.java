@@ -118,8 +118,9 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
         int size = 0;
         while (LuaBindings.geti(state.address, -1, size + 1) != LuaBindings.TNIL) {
             LuaBindings.settop(state.address, -2);
+            size += 1;
         }
-        LuaBindings.settop(state.address, -2);
+        LuaBindings.settop(state.address, -3);
         return size;
     }
 
@@ -145,7 +146,7 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
 
     @Override
     public Iterator<LuaValue> iterator() {
-        return new LuaListIterator(this);
+        return new LuaListIterator(this, 0);
     }
 
     @Override
@@ -226,6 +227,7 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
         return true;
     }
 
+    // TODO do better with tables?
     @Override
     public boolean removeAll(Collection<?> c) {
         table.checkIsAlive();
@@ -260,7 +262,7 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
             LuaBindings.settop(state.address, -2);
             if (!values.contains(value)) {
                 LuaBindings.pushnil(state.address);
-                LuaBindings.seti(state.address, -1, i + 1);
+                LuaBindings.seti(state.address, -2, i + 1);
                 hasChanged = true;
             }
         }
@@ -294,7 +296,7 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
     public LuaValue set(int index, LuaValue element) {
         table.checkIsAlive();
         state.pushValue(this);
-        LuaBindings.geti(state.address, -2, index + 1);
+        LuaBindings.geti(state.address, -1, index + 1);
         LuaValue value = LuaValue.from(state, -1);
         LuaBindings.settop(state.address, -2);
         state.pushValue(element);
@@ -316,9 +318,11 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
     public LuaValue remove(int index) {
         table.checkIsAlive();
         LuaValue value = get(index);
+        int size = size();
         state.pushValue(this);
         LuaBindings.pushnil(state.address);
         LuaBindings.seti(state.address, -2, index + 1);
+        collapse(-1, size, index);
         LuaBindings.settop(state.address, -2);
         return value.isNil() ? null : value;
     }
@@ -367,12 +371,12 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
 
     @Override
     public ListIterator<LuaValue> listIterator() {
-        return new LuaListListIterator(this, 0);
+        return new LuaListIterator(this, 0);
     }
 
     @Override
     public ListIterator<LuaValue> listIterator(int index) {
-        return new LuaListListIterator(this, index);
+        return new LuaListIterator(this, index);
     }
 
     @Override
@@ -406,46 +410,13 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
         return table.hashCode();
     }
 
-    static class LuaListIterator implements Iterator<LuaValue> {
-        private final ListValue list;
-        private int index = 0;
-
-        LuaListIterator(ListValue list) {
-            this.list = list;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return index < list.size();
-        }
-
-        @Override
-        public LuaValue next() {
-            if (!hasNext()) {
-                throw new NoSuchElementException();
-            }
-            LuaValue value = list.get(index);
-            index += 1;
-            return value;
-        }
-
-        @Override
-        public void remove() {
-            index -= 1;
-            if (index < 0 || index >= list.size()) {
-                throw new NoSuchElementException();
-            }
-            list.remove(index);
-        }
-    }
-
-    static class LuaListListIterator implements ListIterator<LuaValue> {
+    static class LuaListIterator implements ListIterator<LuaValue> {
         private final ListValue list;
         private boolean hasRemoved = false;
         private int lastIndex = -1;
         private int index;
 
-        LuaListListIterator(ListValue list, int index) {
+        LuaListIterator(ListValue list, int index) {
             this.list = list;
             this.index = index;
         }
@@ -461,9 +432,8 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
                 throw new NoSuchElementException();
             }
             lastIndex = index;
-            LuaValue value = list.get(index);
             index += 1;
-            return value;
+            return list.get(lastIndex);
         }
 
         @Override
@@ -477,9 +447,8 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
                 throw new NoSuchElementException();
             }
             lastIndex = index;
-            LuaValue value = list.get(index - 1);
             index -= 1;
-            return value;
+            return list.get(index);
         }
 
         @Override
@@ -494,10 +463,12 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
 
         @Override
         public void remove() {
-            list.remove(lastIndex);
-            if (index >= lastIndex) {
-                index -= 1;
+            if (hasRemoved) {
+                throw new IllegalStateException();
             }
+            index = lastIndex;
+            list.remove(index);
+            hasRemoved = true;
         }
 
         @Override
@@ -508,11 +479,7 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
         @Override
         public void add(LuaValue value) {
             list.add(index, value);
-            if (index < 0) {
-                index = 1;
-            } else if (index < list.size()) {
-                index += 1;
-            }
+            index += 1;
         }
     }
 }

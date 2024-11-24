@@ -3,6 +3,7 @@ package me.white.wlua;
 import java.lang.foreign.Arena;
 import java.util.Objects;
 
+// TODO store byte[] value as well
 public final class StringValue extends LuaValue {
     private final String value;
 

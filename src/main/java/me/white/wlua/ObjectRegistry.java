@@ -28,8 +28,9 @@ class ObjectRegistry {
     static void pushObject(LuaThread thread, Object object) {
         try (Arena arena = Arena.ofConfined()) {
             int id = register(object);
-            LuaBindings.pushinteger(thread.address, id);
             LuaBindings.newuserdatauv(thread.address, 0, 1);
+            LuaBindings.pushinteger(thread.address, id);
+            LuaBindings.setiuservalue(thread.address, -2, 1);
             if (LuaBindings.auxiliaryNewmetatable(thread.address, arena.allocateFrom(METATABLE_NAME)) == 1) {
                 LuaBindings.pushcclosure(thread.address, LuaState.GC_FUNCTION, 0);
                 LuaBindings.setfield(thread.address, -2, arena.allocateFrom("__gc"));
@@ -40,7 +41,7 @@ class ObjectRegistry {
 
     static int from(LuaThread thread, int index) {
         LuaBindings.getiuservalue(thread.address, -1, 1);
-        int id = (int)LuaBindings.tointegerx(thread.address, -1, MemorySegment.NULL);
+        int id = LuaBindings.tointegerx(thread.address, -1, MemorySegment.NULL);
         LuaBindings.settop(thread.address, -2);
         return id;
     }

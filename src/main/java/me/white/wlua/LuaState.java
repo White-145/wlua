@@ -8,39 +8,33 @@ import java.util.Set;
 public final class LuaState extends LuaThread {
     private static final String REFERENCES_FIELD = "references";
     static final Arena GLOBAL = Arena.ofAuto();
-    static final MemorySegment GC_FUNCTION;
-    static final MemorySegment RUN_FUNCTION;
+    static final MemorySegment GC_FUNCTION = LuaBindings.stubCFunction(GLOBAL, address -> {
+        LuaBindings.getiuservalue(address, -1, 1);
+        int id = LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
+        ObjectRegistry.remove(id);
+        return 0;
+    });
+    static final MemorySegment RUN_FUNCTION = LuaBindings.stubCFunction(GLOBAL, address -> {
+        LuaBindings.getiuservalue(address, LuaBindings.REGISTRYINDEX - 1, 1);
+        int id = LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
+        LuaBindings.settop(address, -2);
+        Object object = ObjectRegistry.get(id);
+        if (!(object instanceof JavaFunction)) {
+            try (Arena arena = Arena.ofConfined()) {
+                LuaBindings.pushstring(address, arena.allocateFrom("error getting function"));
+            }
+            LuaBindings.error(address);
+            return 0;
+        }
+        LuaThread thread = LuaThread.getThread(address);
+        VarArg args = VarArg.collect(thread, LuaBindings.gettop(address));
+        VarArg results = ((JavaFunction)object).run(thread, args);
+        results.push(thread);
+        return results.size();
+    });
     private final Set<Integer> references = new HashSet<>();
     private int nextReference = 1;
     final Set<LuaThread> threads = new HashSet<>();
-
-    static {
-        // ensure this is done after initialization of GLOBAL
-        GC_FUNCTION = LuaBindings.stubCFunction(GLOBAL, address -> {
-            LuaBindings.getiuservalue(address, -1, 1);
-            int id = (int)LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
-            ObjectRegistry.remove(id);
-            return 0;
-        });
-        RUN_FUNCTION = LuaBindings.stubCFunction(GLOBAL, address -> {
-            LuaBindings.getiuservalue(address, -1, 1);
-            int id = (int)LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
-            Object object = ObjectRegistry.get(id);
-            if (!(object instanceof JavaFunction)) {
-                try (Arena arena = Arena.ofConfined()) {
-                    LuaBindings.pushstring(address, arena.allocateFrom("error getting function"));
-                }
-                LuaBindings.error(address);
-                return 0;
-            }
-            LuaBindings.settop(address, -2);
-            LuaThread thread = LuaThread.getThread(address);
-            VarArg args = VarArg.collect(thread, LuaBindings.gettop(address));
-            VarArg results = ((JavaFunction)object).run(thread, args);
-            results.push(thread);
-            return results.size();
-        });
-    }
 
     public LuaState() {
         super(null, LuaBindings.auxiliaryNewstate());
@@ -55,7 +49,9 @@ public final class LuaState extends LuaThread {
     }
 
     public LuaThread subThread() {
-        return new LuaThread(this, LuaBindings.newthread(address));
+        MemorySegment threadAddress = LuaBindings.newthread(address);
+        LuaBindings.settop(address, -2);
+        return new LuaThread(this, threadAddress);
     }
 
     public boolean isSubThread(LuaThread thread) {
@@ -70,7 +66,7 @@ public final class LuaState extends LuaThread {
         LuaBindings.pushvalue(address, absindex);
         LuaBindings.gettable(address, -2);
         if (LuaBindings.isinteger(address, -1) == 1) {
-            int reference = (int)LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
+            int reference = LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
             LuaBindings.settop(address, -3);
             return reference;
         }
@@ -91,15 +87,17 @@ public final class LuaState extends LuaThread {
         return references.contains(reference);
     }
 
-    LuaValue fromReference(int reference) {
-        try (Arena arena = Arena.ofConfined()) {
-            LuaBindings.getfield(address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(REFERENCES_FIELD));
+    void fromReference(int reference, LuaThread thread) {
+        if (!isSubThread(thread)) {
+            throw new IllegalStateException("Could not move references between states.");
         }
-        LuaBindings.pushinteger(address, reference);
-        LuaBindings.gettable(address, -2);
-        LuaValue value = LuaValue.from(this, -1);
-        LuaBindings.settop(address, -3);
-        return value;
+        try (Arena arena = Arena.ofConfined()) {
+            LuaBindings.getfield(thread.address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(REFERENCES_FIELD));
+        }
+        LuaBindings.pushinteger(thread.address, reference);
+        LuaBindings.gettable(thread.address, -2);
+        LuaBindings.copy(thread.address, -1, -2);
+        LuaBindings.settop(thread.address, -2);
     }
 
     void cleanReference(int reference) {
@@ -125,8 +123,9 @@ public final class LuaState extends LuaThread {
         if (!isAlive()) {
             return;
         }
-        for (LuaThread thread : threads) {
-            thread.close();
+        Object[] arr = threads.toArray();
+        for (Object thread : arr) {
+            ((LuaThread)thread).close();
         }
         LuaBindings.close(address);
     }

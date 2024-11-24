@@ -5,7 +5,7 @@ public class LuaException extends RuntimeException {
         super(msg);
     }
 
-    static void checkError(int code, LuaState state) {
+    static void checkError(int code, LuaThread thread) {
         if (code == LuaBindings.OK || code == LuaBindings.YIELD) {
             return;
         }
@@ -16,8 +16,8 @@ public class LuaException extends RuntimeException {
             case LuaBindings.ERRERR -> "error";
             default -> "unknown";
         };
-        String msg = LuaValue.from(state, -1).toString();
-        LuaBindings.settop(state.address, -2);
+        String msg = LuaValue.from(thread, -1).toString();
+        LuaBindings.settop(thread.address, -2);
         throw new LuaException(name + ": " + msg);
     }
 }

@@ -1,15 +1,15 @@
 package me.white.wlua;
 
 public final class IntegerValue extends NumberValue {
-    private final long value;
+    private final int value;
 
-    public IntegerValue(long value) {
-        super((double)value);
+    public IntegerValue(int value) {
+        super(value);
         this.value = value;
     }
 
     public IntegerValue(double value) {
-        this((long)value);
+        this((int)value);
     }
 
     @Override

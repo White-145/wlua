@@ -34,10 +34,7 @@ public sealed abstract class RefValue extends LuaValue permits FunctionValue, Ta
     @Override
     final void push(LuaThread thread) {
         checkIsAlive();
-        if (!state.isSubThread(thread)) {
-            throw new IllegalStateException("Cannot move references between threads.");
-        }
-        state.fromReference(reference);
+        state.fromReference(reference, thread);
     }
 
     @Override

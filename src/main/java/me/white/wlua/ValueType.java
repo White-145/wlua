@@ -1,6 +1,8 @@
 package me.white.wlua;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 
 public enum ValueType {
     NIL(LuaBindings.TNIL, "nil", NilValue.class) {
@@ -27,7 +29,15 @@ public enum ValueType {
     STRING(LuaBindings.TSTRING, "string", StringValue.class) {
         @Override
         LuaValue fromStack(LuaThread thread, int index) {
-            return new StringValue(LuaBindings.tolstring(thread.address, index, MemorySegment.NULL).getString(0));
+            LuaBindings.pushvalue(thread.address, index);
+            String value;
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment lengthSegment = arena.allocate(ValueLayout.JAVA_INT);
+                MemorySegment segment = LuaBindings.tolstring(thread.address, -1, lengthSegment);
+                value = segment.reinterpret(lengthSegment.get(ValueLayout.JAVA_INT, 0) + 1).getString(0);
+            }
+            LuaBindings.settop(thread.address, -2);
+            return new StringValue(value);
         }
     },
     TABLE(LuaBindings.TTABLE, "table", TableValue.class) {
@@ -48,7 +58,7 @@ public enum ValueType {
         @Override
         LuaValue fromStack(LuaThread thread, int index) {
             LuaBindings.getiuservalue(thread.address, index, 1);
-            int id = (int)LuaBindings.tointegerx(thread.address, -1, MemorySegment.NULL);
+            int id = LuaBindings.tointegerx(thread.address, -1, MemorySegment.NULL);
             LuaBindings.settop(thread.address, -2);
             return new UserDataValue(ObjectRegistry.get(id));
         }

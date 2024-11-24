@@ -13,10 +13,10 @@ public class VarArg {
             if (values[i] == null) {
                 values[i] = LuaValue.nil();
             } else if (!values[i].isNil()) {
-                lastI = i;
+                lastI = i + 1;
             }
         }
-        this.values = conform(values, lastI + 1);
+        this.values = conform(values, lastI);
     }
 
     public VarArg(Collection<LuaValue> values) {
