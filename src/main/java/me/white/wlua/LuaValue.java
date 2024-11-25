@@ -4,6 +4,7 @@ import java.lang.foreign.Arena;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread, NilValue, NumberValue, RefValue, StringValue, UserDataValue {
     static LuaValue from(LuaThread thread, int index) {
@@ -40,6 +41,9 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
     }
 
     public static FunctionValue load(LuaThread thread, String chunk) {
+        Objects.requireNonNull(thread);
+        thread.checkIsAlive();
+        Objects.requireNonNull(chunk);
         try (Arena arena = Arena.ofConfined()) {
             LuaBindings.auxiliaryLoadstring(thread.address, arena.allocateFrom(chunk));
         }
@@ -49,7 +53,9 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
     }
 
     public static FunctionValue fromFunction(LuaThread thread, JavaFunction function) {
+        Objects.requireNonNull(thread);
         thread.checkIsAlive();
+        Objects.requireNonNull(function);
         ObjectRegistry.pushObject(thread, function);
         LuaBindings.pushcclosure(thread.address, LuaState.RUN_FUNCTION, 1);
         LuaValue value = from(thread, -1);
@@ -58,6 +64,9 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
     }
 
     public static TableValue fromMap(LuaThread thread, Map<LuaValue, LuaValue> map) {
+        Objects.requireNonNull(thread);
+        thread.checkIsAlive();
+        Objects.requireNonNull(map);
         LuaBindings.createtable(thread.address, 0, map.size());
         for (Map.Entry<LuaValue, LuaValue> entry : map.entrySet()) {
             thread.pushValue(entry.getKey());

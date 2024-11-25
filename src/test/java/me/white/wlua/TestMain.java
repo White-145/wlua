@@ -7,10 +7,9 @@ import java.util.*;
 // TODO Reference identity
 // TODO Metatables
 // TODO Java module
-// TODO Bounds check for list
 // TODO Use LuaValue::isNil instead of direct instanceof where appropriate
-// TODO Rewrite some of mass-value TableValue and ListValue operations to use lua's tables
-// TODO Store bytes in StringValue
+// TODO Rewrite some of mass-value TableValue operations to use lua's tables
+// TODO Moving reference values between states
 
 public class TestMain {
     private static void assertTrue(boolean condition) {
@@ -116,6 +115,9 @@ public class TestMain {
             LuaValue ref2 = state.getGlobal("a");
             assertTrue(ref1.equals(ref2));
 //            assertTrue(ref1 == ref2); TODO reference identity ^
+            value = new StringValue("abc\0def");
+            state.setGlobal("val", value);
+            assertTrue(state.getGlobal("val").equals(new StringValue(new byte[]{ 'a', 'b', 'c', 0, 'd', 'e', 'f' })));
         }
     }
 
@@ -225,7 +227,6 @@ public class TestMain {
             assertTrue(list.size() == 2);
             assertTrue(list.get(0).equals(LuaValue.of(3)));
             assertTrue(list.get(1).equals(LuaValue.of(10)));
-            assertTrue(list.get(3) == null);
             assertTrue(Arrays.equals(list.toArray(), new LuaValue[]{ LuaValue.of(3), LuaValue.of(10) }));
             assertTrue(!list.contains(LuaValue.of(93)));
             assertTrue(list.contains(LuaValue.of(3)));

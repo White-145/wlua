@@ -256,7 +256,7 @@ class LuaBindings {
             System.loadLibrary("lua54");
             isLoaded = true;
         }
-        MemorySegment address = SymbolLookup.loaderLookup().find(name).orElseThrow(() -> new UnsatisfiedLinkError("lua is not loaded"));
+        MemorySegment address = SymbolLookup.loaderLookup().find(name).orElseThrow(() -> new UnsatisfiedLinkError("Lua is not loaded."));
         return Linker.nativeLinker().downcallHandle(address, descriptor);
     }
 

@@ -10,11 +10,11 @@ public class LuaException extends RuntimeException {
             return;
         }
         String name = switch (code) {
-            case LuaBindings.ERRRUN -> "run";
-            case LuaBindings.ERRSYNTAX -> "syntax";
-            case LuaBindings.ERRMEM -> "memory";
-            case LuaBindings.ERRERR -> "error";
-            default -> "unknown";
+            case LuaBindings.ERRRUN -> "Run";
+            case LuaBindings.ERRSYNTAX -> "Syntax";
+            case LuaBindings.ERRMEM -> "Memory";
+            case LuaBindings.ERRERR -> "Error";
+            default -> "Unknown";
         };
         String msg = LuaValue.from(thread, -1).toString();
         LuaBindings.settop(thread.address, -2);

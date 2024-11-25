@@ -31,13 +31,16 @@ public enum ValueType {
         LuaValue fromStack(LuaThread thread, int index) {
             LuaBindings.pushvalue(thread.address, index);
             String value;
+            byte[] bytes;
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment lengthSegment = arena.allocate(ValueLayout.JAVA_INT);
                 MemorySegment segment = LuaBindings.tolstring(thread.address, -1, lengthSegment);
-                value = segment.reinterpret(lengthSegment.get(ValueLayout.JAVA_INT, 0) + 1).getString(0);
+                int length = lengthSegment.get(ValueLayout.JAVA_INT, 0);
+                value = segment.reinterpret(length + 1).getString(0);
+                bytes = segment.reinterpret(length).toArray(ValueLayout.JAVA_BYTE);
             }
             LuaBindings.settop(thread.address, -2);
-            return new StringValue(value);
+            return new StringValue(value, bytes);
         }
     },
     TABLE(LuaBindings.TTABLE, "table", TableValue.class) {

@@ -5,11 +5,11 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 
 public sealed class LuaThread extends LuaValue implements AutoCloseable permits LuaState {
-    static final String STATE_ID_FIELD = "state_id";
+    protected static final String STATE_ID_FIELD = "state_id";
+    private final LuaState state;
     protected final int id;
-    final LuaState state;
+    protected boolean isClosed = false;
     final MemorySegment address;
-    boolean isClosed = false;
 
     LuaThread(LuaState state, MemorySegment address) {
         this.state = state;

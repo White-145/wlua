@@ -11,12 +11,15 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
         state = table.state;
     }
 
-    private void shift(int index, int size, int from, int amount) {
+    private void shift(int index, int size, int from) {
+        if (size == from) {
+            return;
+        }
         int absindex = LuaBindings.absindex(state.address, index);
         for (int i = 0; i <= size - from; ++i) {
             int j = size - i;
             LuaBindings.geti(state.address, absindex, j);
-            LuaBindings.seti(state.address, absindex, j + amount);
+            LuaBindings.seti(state.address, absindex, j + 1);
         }
     }
 
@@ -41,27 +44,16 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
         }
     }
 
-    private boolean removeEvery(LuaValue value) {
-        state.pushValue(value);
-        int size = size();
-        boolean hasChanged = false;
-        for (int i = 0; i < size; ++i) {
-            LuaBindings.geti(state.address, -2, i + 1);
-            if (LuaBindings.compare(state.address, -2, -1, LuaBindings.OPEQ) == 1) {
-                LuaBindings.pushnil(state.address);
-                LuaBindings.seti(state.address, -4, i + 1);
-                hasChanged = true;
-            }
-            LuaBindings.settop(state.address, -2);
+    private void checkAddRange(int index, int size) {
+        if (index < 0 || index > size) {
+            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size);
         }
-        LuaBindings.settop(state.address, -2);
-        if (!hasChanged) {
-            LuaBindings.settop(state.address, -2);
-            return false;
+    }
+
+    private void checkNil(LuaValue value) {
+        if (LuaValue.isNil(value)) {
+            throw new IllegalArgumentException("Could not set nil value to the list.");
         }
-        collapse(-1, size, 0);
-        LuaBindings.settop(state.address, -2);
-        return true;
     }
 
     public TableValue getTable() {
@@ -148,12 +140,14 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
 
     @Override
     public Iterator<LuaValue> iterator() {
+        table.checkIsAlive();
         return new LuaListIterator(this, 0);
     }
 
     @Override
     public boolean add(LuaValue value) {
         table.checkIsAlive();
+        checkNil(value);
         state.pushValue(this);
         state.pushValue(value);
         LuaBindings.seti(state.address, -2, size() + 1);
@@ -164,12 +158,12 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
     @Override
     public boolean remove(Object o) {
         table.checkIsAlive();
-        if (!(o instanceof LuaValue)) {
+        if (LuaValue.isNil(o)) {
             return false;
         }
+        int size = size();
         state.pushValue(this);
         state.pushValue((LuaValue)o);
-        int size = size();
         boolean hasChanged = false;
         for (int i = 0; i < size; ++i) {
             LuaBindings.geti(state.address, -2, i + 1);
@@ -194,21 +188,37 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
     @Override
     public boolean containsAll(Collection<?> c) {
         table.checkIsAlive();
+        Objects.requireNonNull(c);
+        LuaBindings.createtable(state.address, 0, 0);
+        int size = size();
+        state.pushValue(this);
+        for (int i = 0; i < size; ++i) {
+            LuaBindings.geti(state.address, -1, i + 1);
+            LuaBindings.pushboolean(state.address, 1);
+            LuaBindings.settable(state.address, -4);
+        }
         for (Object o : c) {
-            if (!contains(o)) {
+            if (LuaValue.isNil(o)) {
+                LuaBindings.settop(state.address, -3);
                 return false;
             }
+            state.pushValue((LuaValue)o);
+            if (LuaBindings.gettable(state.address, -3) != LuaBindings.TBOOLEAN) {
+                LuaBindings.settop(state.address, -4);
+                return false;
+            }
+            LuaBindings.settop(state.address, -2);
         }
+        LuaBindings.settop(state.address, -3);
         return true;
     }
 
     @Override
     public boolean addAll(Collection<? extends LuaValue> c) {
         table.checkIsAlive();
+        Objects.requireNonNull(c);
         for (LuaValue value : c) {
-            if (!LuaValue.isNil(value)) {
-                add(value);
-            }
+            add(value);
         }
         return true;
     }
@@ -216,58 +226,76 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
     @Override
     public boolean addAll(int index, Collection<? extends LuaValue> c) {
         table.checkIsAlive();
-        int size = size();
-        if (index < 0 || index >= size) {
-            return false;
-        }
+        Objects.requireNonNull(c);
+        checkAddRange(index, size());
         for (LuaValue value : c) {
-            if (!LuaValue.isNil(value)) {
-                add(index, value);
-                index += 1;
-            }
+            add(index, value);
+            index += 1;
         }
-        return true;
+        return !c.isEmpty();
     }
 
     @Override
     public boolean removeAll(Collection<?> c) {
         table.checkIsAlive();
-        boolean hasChanged = false;
-        state.pushValue(this);
+        Objects.requireNonNull(c);
+        LuaBindings.createtable(state.address, 0, c.size());
         for (Object o : c) {
-            if (!LuaValue.isNil(o)) {
-                hasChanged = removeEvery((LuaValue)o) || hasChanged;
+            if (LuaValue.isNil(o)) {
+                continue;
             }
-        }
-        return hasChanged;
-    }
-
-    @Override
-    public boolean retainAll(Collection<?> c) {
-        table.checkIsAlive();
-        Set<LuaValue> values = new HashSet<>();
-        for (Object value : c) {
-            if (!LuaValue.isNil(value)) {
-                values.add((LuaValue)value);
-            }
-        }
-        if (values.isEmpty()) {
-            return false;
+            state.pushValue((LuaValue)o);
+            LuaBindings.pushboolean(state.address, 1);
+            LuaBindings.settable(state.address, -3);
         }
         boolean hasChanged = false;
         int size = size();
         state.pushValue(this);
         for (int i = 0; i < size; ++i) {
             LuaBindings.geti(state.address, -1, i + 1);
-            LuaValue value = LuaValue.from(state, -1);
-            LuaBindings.settop(state.address, -2);
-            if (!values.contains(value)) {
+            if (LuaBindings.gettable(state.address, -3) == LuaBindings.TBOOLEAN) {
                 LuaBindings.pushnil(state.address);
-                LuaBindings.seti(state.address, -2, i + 1);
+                LuaBindings.seti(state.address, -3, i + 1);
                 hasChanged = true;
             }
+            LuaBindings.settop(state.address, -2);
         }
-        collapse(-1, size, 0);
+        if (hasChanged) {
+            collapse(-1, size, 0);
+        }
+        LuaBindings.settop(state.address, -3);
+        return hasChanged;
+    }
+
+    @Override
+    public boolean retainAll(Collection<?> c) {
+        table.checkIsAlive();
+        Objects.requireNonNull(c);
+        LuaBindings.createtable(state.address, 0, 0);
+        for (Object o : c) {
+            if (LuaValue.isNil(o)) {
+                continue;
+            }
+            state.pushValue((LuaValue)o);
+            LuaBindings.pushboolean(state.address, 1);
+            LuaBindings.settable(state.address, -3);
+        }
+        boolean hasChanged = false;
+        int size = size();
+        state.pushValue(this);
+        for (int i = 0; i < size; ++i) {
+            LuaBindings.geti(state.address, -1, i + 1);
+            if (LuaBindings.gettable(state.address, -3) != LuaBindings.TBOOLEAN) {
+                LuaBindings.pushnil(state.address);
+                LuaBindings.seti(state.address, -3, i + 1);
+                hasChanged = true;
+            }
+            LuaBindings.settop(state.address, -2);
+        }
+        if (hasChanged) {
+            collapse(-1, size, 0);
+        }
+        LuaBindings.settop(state.address, -3);
         return hasChanged;
     }
 
@@ -286,9 +314,7 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
     @Override
     public LuaValue get(int index) {
         table.checkIsAlive();
-        if (index < 0 || index >= size()) {
-            return null;
-        }
+        Objects.checkIndex(index, size());
         state.pushValue(this);
         LuaBindings.geti(state.address, -1, index + 1);
         LuaValue value = LuaValue.from(state, -1);
@@ -299,47 +325,54 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
     @Override
     public LuaValue set(int index, LuaValue element) {
         table.checkIsAlive();
+        checkNil(element);
+        Objects.checkIndex(index, size());
         state.pushValue(this);
         LuaBindings.geti(state.address, -1, index + 1);
         LuaValue value = LuaValue.from(state, -1);
-        LuaBindings.settop(state.address, -2);
         state.pushValue(element);
-        LuaBindings.seti(state.address, -2, index + 1);
-        LuaBindings.settop(state.address, -2);
+        LuaBindings.seti(state.address, -3, index + 1);
+        LuaBindings.settop(state.address, -3);
         return value.isNil() ? null : value;
     }
 
     @Override
     public void add(int index, LuaValue element) {
         table.checkIsAlive();
+        checkNil(element);
+        int size = size();
+        checkAddRange(index, size);
         state.pushValue(this);
-        shift(-1, size(), index, 1);
         state.pushValue(element);
+        shift(-2, size, index);
         LuaBindings.seti(state.address, -2, index + 1);
+        LuaBindings.settop(state.address, -2);
     }
 
     @Override
     public LuaValue remove(int index) {
         table.checkIsAlive();
-        LuaValue value = get(index);
         int size = size();
+        Objects.checkIndex(index, size);
         state.pushValue(this);
+        LuaBindings.geti(state.address, -1, index + 1);
+        LuaValue value = LuaValue.from(state, -1);
         LuaBindings.pushnil(state.address);
-        LuaBindings.seti(state.address, -2, index + 1);
-        collapse(-1, size, index);
-        LuaBindings.settop(state.address, -2);
+        LuaBindings.seti(state.address, -3, index + 1);
+        collapse(-2, size, index);
+        LuaBindings.settop(state.address, -3);
         return value.isNil() ? null : value;
     }
 
     @Override
     public int indexOf(Object o) {
         table.checkIsAlive();
-        if (!(o instanceof LuaValue)) {
+        if (LuaValue.isNil(o)) {
             return -1;
         }
+        int size = size();
         state.pushValue(this);
         state.pushValue((LuaValue)o);
-        int size = size();
         for (int i = 0; i < size; ++i) {
             LuaBindings.geti(state.address, -2, i + 1);
             if (LuaBindings.compare(state.address, -2, -1, LuaBindings.OPEQ) == 1) {
@@ -358,9 +391,9 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
         if (!(o instanceof LuaValue)) {
             return -1;
         }
+        int size = size();
         state.pushValue(this);
         state.pushValue((LuaValue)o);
-        int size = size();
         for (int i = size - 1; i >= 0; --i) {
             LuaBindings.geti(state.address, -2, i + 1);
             if (LuaBindings.compare(state.address, -2, -1, LuaBindings.OPEQ) == 1) {
@@ -383,14 +416,15 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
         return new LuaListIterator(this, index);
     }
 
+    // no clue how to implement this
     @Override
     public List<LuaValue> subList(int fromIndex, int toIndex) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    void push(LuaThread state) {
-        table.push(state);
+    void push(LuaThread thread) {
+        table.push(thread);
     }
 
     @Override
