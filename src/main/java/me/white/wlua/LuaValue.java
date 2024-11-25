@@ -1,7 +1,9 @@
 package me.white.wlua;
 
 import java.lang.foreign.Arena;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread, NilValue, NumberValue, RefValue, StringValue, UserDataValue {
     static LuaValue from(LuaThread thread, int index) {
@@ -99,7 +101,7 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
         throw new UnsupportedOperationException();
     }
 
-    public long toInteger() {
+    public int toInteger() {
         throw new UnsupportedOperationException();
     }
 

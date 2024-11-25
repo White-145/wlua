@@ -28,8 +28,8 @@ public sealed class NumberValue extends LuaValue permits IntegerValue {
     }
 
     @Override
-    public long toInteger() {
-        return (long)value;
+    public int toInteger() {
+        return (int)value;
     }
 
     @Override

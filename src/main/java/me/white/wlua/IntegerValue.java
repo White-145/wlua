@@ -18,7 +18,7 @@ public final class IntegerValue extends NumberValue {
     }
 
     @Override
-    public long toInteger() {
+    public int toInteger() {
         return value;
     }
 

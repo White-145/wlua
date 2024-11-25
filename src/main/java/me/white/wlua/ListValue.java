@@ -229,7 +229,6 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
         return true;
     }
 
-    // TODO do better with tables?
     @Override
     public boolean removeAll(Collection<?> c) {
         table.checkIsAlive();

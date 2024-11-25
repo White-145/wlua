@@ -9,6 +9,8 @@ import java.util.*;
 // TODO Java module
 // TODO Bounds check for list
 // TODO Use LuaValue::isNil instead of direct instanceof where appropriate
+// TODO Rewrite some of mass-value TableValue and ListValue operations to use lua's tables
+// TODO Store bytes in StringValue
 
 public class TestMain {
     private static void assertTrue(boolean condition) {
@@ -18,23 +20,14 @@ public class TestMain {
     }
 
     public static void main(String[] args) {
-        System.out.println("testing state");
         testState();
-        System.out.println("testing program");
         testProgram();
-        System.out.println("testing references");
         testReferences();
-        System.out.println("testing values");
         testValues();
-        System.out.println("testing function");
         testFunction();
-        System.out.println("testing table");
         testTable();
-        System.out.println("testing list");
         testList();
-        System.out.println("testing userdata");
         testUserData();
-        System.out.println("testing coroutines and threads");
         testCoroutinesAndThreads();
     }
 
