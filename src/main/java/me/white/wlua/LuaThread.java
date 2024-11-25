@@ -116,7 +116,7 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
         return VarArg.collect(this, results);
     }
 
-    // this method returns VarArg purely for syntax purposes
+    // this method returns VarArg purely for syntactic purposes
     public VarArg yield(VarArg args) {
         checkIsAlive();
         args.push(this);

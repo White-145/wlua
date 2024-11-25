@@ -50,6 +50,7 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
             if (LuaBindings.compare(state.address, -2, -1, LuaBindings.OPEQ) == 1) {
                 LuaBindings.pushnil(state.address);
                 LuaBindings.seti(state.address, -4, i + 1);
+                hasChanged = true;
             }
             LuaBindings.settop(state.address, -2);
         }
@@ -127,7 +128,7 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
     @Override
     public boolean contains(Object o) {
         table.checkIsAlive();
-        if (!(o instanceof LuaValue)) {
+        if (LuaValue.isNil(o)) {
             return false;
         }
         state.pushValue(this);
@@ -139,6 +140,7 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
                 LuaBindings.settop(state.address, -4);
                 return true;
             }
+            LuaBindings.settop(state.address, -2);
         }
         LuaBindings.settop(state.address, -3);
         return false;
@@ -285,6 +287,9 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
     @Override
     public LuaValue get(int index) {
         table.checkIsAlive();
+        if (index < 0 || index >= size()) {
+            return null;
+        }
         state.pushValue(this);
         LuaBindings.geti(state.address, -1, index + 1);
         LuaValue value = LuaValue.from(state, -1);
@@ -431,6 +436,7 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
             if (!hasNext()) {
                 throw new NoSuchElementException();
             }
+            hasRemoved = false;
             lastIndex = index;
             index += 1;
             return list.get(lastIndex);
@@ -446,6 +452,7 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
             if (!hasPrevious()) {
                 throw new NoSuchElementException();
             }
+            hasRemoved = false;
             lastIndex = index;
             index -= 1;
             return list.get(index);

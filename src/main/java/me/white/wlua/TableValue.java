@@ -49,12 +49,12 @@ public final class TableValue extends RefValue implements Map<LuaValue, LuaValue
     @Override
     public boolean containsKey(Object key) {
         checkIsAlive();
-        if (!(key instanceof LuaValue)) {
+        if (LuaValue.isNil(key)) {
             return false;
         }
         state.pushValue(this);
         state.pushValue((LuaValue)key);
-        boolean contains = LuaBindings.gettable(state.address, -2) == LuaBindings.TNIL;
+        boolean contains = LuaBindings.gettable(state.address, -2) != LuaBindings.TNIL;
         LuaBindings.settop(state.address, -3);
         return contains;
     }

@@ -32,7 +32,8 @@ class ObjectRegistry {
             LuaBindings.pushinteger(thread.address, id);
             LuaBindings.setiuservalue(thread.address, -2, 1);
             if (LuaBindings.auxiliaryNewmetatable(thread.address, arena.allocateFrom(METATABLE_NAME)) == 1) {
-                LuaBindings.pushcclosure(thread.address, LuaState.GC_FUNCTION, 0);
+                LuaBindings.pushvalue(thread.address, -1);
+                LuaBindings.pushcclosure(thread.address, LuaState.GC_FUNCTION, 1);
                 LuaBindings.setfield(thread.address, -2, arena.allocateFrom("__gc"));
             }
             LuaBindings.setmetatable(thread.address, -2);

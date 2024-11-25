@@ -8,13 +8,33 @@ import java.util.Set;
 public final class LuaState extends LuaThread {
     private static final String REFERENCES_FIELD = "references";
     static final Arena GLOBAL = Arena.ofAuto();
-    static final MemorySegment GC_FUNCTION = LuaBindings.stubCFunction(GLOBAL, address -> {
-        LuaBindings.getiuservalue(address, -1, 1);
+    static final MemorySegment GC_FUNCTION = LuaBindings.stubCFunction(GLOBAL, LuaState::gcFunction);
+    static final MemorySegment RUN_FUNCTION = LuaBindings.stubCFunction(GLOBAL, LuaState::runFunction);
+    private final Set<Integer> references = new HashSet<>();
+    private int nextReference = 1;
+    final Set<LuaThread> threads = new HashSet<>();
+
+    public LuaState() {
+        super(null, LuaBindings.auxiliaryNewstate());
+        LuaBindings.createtable(address, 0, 0);
+        try (Arena arena = Arena.ofConfined()) {
+            LuaBindings.setfield(address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(REFERENCES_FIELD));
+        }
+        LuaBindings.pushinteger(address, id);
+        try (Arena arena = Arena.ofConfined()) {
+            LuaBindings.setfield(address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(LuaThread.STATE_ID_FIELD));
+        }
+    }
+
+    private static int gcFunction(MemorySegment address) {
+        LuaBindings.getiuservalue(address, LuaBindings.REGISTRYINDEX - 1, 1);
         int id = LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
+        LuaBindings.settop(address, -2);
         ObjectRegistry.remove(id);
         return 0;
-    });
-    static final MemorySegment RUN_FUNCTION = LuaBindings.stubCFunction(GLOBAL, address -> {
+    }
+
+    private static int runFunction(MemorySegment address) {
         LuaBindings.getiuservalue(address, LuaBindings.REGISTRYINDEX - 1, 1);
         int id = LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
         LuaBindings.settop(address, -2);
@@ -31,21 +51,6 @@ public final class LuaState extends LuaThread {
         VarArg results = ((JavaFunction)object).run(thread, args);
         results.push(thread);
         return results.size();
-    });
-    private final Set<Integer> references = new HashSet<>();
-    private int nextReference = 1;
-    final Set<LuaThread> threads = new HashSet<>();
-
-    public LuaState() {
-        super(null, LuaBindings.auxiliaryNewstate());
-        LuaBindings.createtable(address, 0, 0);
-        try (Arena arena = Arena.ofConfined()) {
-            LuaBindings.setfield(address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(REFERENCES_FIELD));
-        }
-        LuaBindings.pushinteger(address, id);
-        try (Arena arena = Arena.ofConfined()) {
-            LuaBindings.setfield(address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(LuaThread.STATE_ID_FIELD));
-        }
     }
 
     public LuaThread subThread() {
@@ -123,10 +128,7 @@ public final class LuaState extends LuaThread {
         if (!isAlive()) {
             return;
         }
-        Object[] arr = threads.toArray();
-        for (Object thread : arr) {
-            ((LuaThread)thread).close();
-        }
         LuaBindings.close(address);
+        isClosed = true;
     }
 }

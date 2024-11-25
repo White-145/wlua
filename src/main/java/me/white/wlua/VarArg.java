@@ -71,7 +71,7 @@ public class VarArg {
         return values.length;
     }
 
-    public void check(int i, boolean check, String function, String details) throws LuaException {
+    private void check(int i, boolean check, String function, String details) throws LuaException {
         if (!check) {
             throw new LuaException("bad argument #" + i + " to '" + function + "' (" + details + ")");
         }
