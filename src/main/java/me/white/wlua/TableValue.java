@@ -62,7 +62,7 @@ public final class TableValue extends RefValue implements Map<LuaValue, LuaValue
     @Override
     public boolean containsValue(Object value) {
         checkIsAlive();
-        if (!(value instanceof LuaValue)) {
+        if (LuaValue.isNil(value)) {
             return false;
         }
         state.pushValue(this);
@@ -82,7 +82,7 @@ public final class TableValue extends RefValue implements Map<LuaValue, LuaValue
     @Override
     public LuaValue get(Object key) {
         checkIsAlive();
-        if (!(key instanceof LuaValue)) {
+        if (LuaValue.isNil(key)) {
             return null;
         }
         state.pushValue(this);
@@ -90,30 +90,29 @@ public final class TableValue extends RefValue implements Map<LuaValue, LuaValue
         LuaBindings.gettable(state.address, -2);
         LuaValue returnValue = LuaValue.from(state, -1);
         LuaBindings.settop(state.address, -3);
-        return LuaValue.isNil(returnValue) ? null : returnValue;
+        return returnValue.isNil() ? null : returnValue;
     }
 
     @Override
     public LuaValue put(LuaValue key, LuaValue value) {
         checkIsAlive();
+        if (LuaValue.isNil(key)) {
+            return null;
+        }
         state.pushValue(this);
         state.pushValue(key);
         LuaBindings.gettable(state.address, -2);
         LuaValue returnValue = LuaValue.from(state, -1);
-        LuaBindings.settop(state.address, -2);
         state.pushValue(key);
         state.pushValue(value);
-        LuaBindings.settable(state.address, -3);
-        LuaBindings.settop(state.address, -2);
-        return LuaValue.isNil(returnValue) ? null : returnValue;
+        LuaBindings.settable(state.address, -4);
+        LuaBindings.settop(state.address, -3);
+        return returnValue.isNil() ? null : returnValue;
     }
 
     @Override
     public LuaValue remove(Object key) {
         checkIsAlive();
-        if (!(key instanceof LuaValue)) {
-            return null;
-        }
         return put((LuaValue)key, LuaValue.nil());
     }
 
@@ -122,6 +121,9 @@ public final class TableValue extends RefValue implements Map<LuaValue, LuaValue
         checkIsAlive();
         state.pushValue(this);
         for (Entry<? extends LuaValue, ? extends LuaValue> entry : m.entrySet()) {
+            if (LuaValue.isNil(entry.getKey())) {
+                continue;
+            }
             state.pushValue(entry.getKey());
             state.pushValue(entry.getValue());
             LuaBindings.settable(state.address, -3);
