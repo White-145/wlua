@@ -84,7 +84,7 @@ public class VarArg {
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T checkUserData(int i, Class<T> clazz, String function, String details) throws LuaException {
+    public <T extends UserData> T checkUserData(int i, Class<T> clazz, String function, String details) throws LuaException {
         return (T)check(i, value -> clazz.isAssignableFrom(value.getClass()), function, details);
     }
 

@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread, NilValue, NumberValue, RefValue, StringValue, UserDataValue {
+public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread, NilValue, NumberValue, RefValue, StringValue, UserData {
     static LuaValue from(LuaThread thread, int index) {
         thread.checkIsAlive();
         ValueType valueType = ValueType.fromId(LuaBindings.type(thread.address, index));
@@ -34,10 +34,6 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
 
     public static NilValue nil() {
         return NilValue.INSTANCE;
-    }
-
-    public static UserDataValue userdata(Object value) {
-        return new UserDataValue(value);
     }
 
     public static FunctionValue load(LuaThread thread, String chunk) {

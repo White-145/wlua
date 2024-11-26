@@ -57,13 +57,17 @@ public enum ValueType {
             return new FunctionValue(state, state.getReference(index));
         }
     },
-    USER_DATA(LuaBindings.TUSERDATA, "userdata", UserDataValue.class) {
+    USER_DATA(LuaBindings.TUSERDATA, "userdata", UserData.class) {
         @Override
         LuaValue fromStack(LuaThread thread, int index) {
             LuaBindings.getiuservalue(thread.address, index, 1);
             int id = LuaBindings.tointegerx(thread.address, -1, MemorySegment.NULL);
             LuaBindings.settop(thread.address, -2);
-            return new UserDataValue(ObjectRegistry.get(id));
+            Object object = ObjectRegistry.get(id);
+            if (!(object instanceof UserData)) {
+                throw new IllegalArgumentException("Could not get userdata value.");
+            }
+            return (UserData)object;
         }
     },
     THREAD(LuaBindings.TTHREAD, "thread", LuaThread.class) {

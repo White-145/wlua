@@ -3,12 +3,9 @@ package me.white.wlua;
 import java.lang.reflect.Field;
 import java.util.*;
 
-// TODO UserData identity
 // TODO Reference identity
 // TODO Metatables
 // TODO Java module
-// TODO Use LuaValue::isNil instead of direct instanceof where appropriate
-// TODO Rewrite some of mass-value TableValue operations to use lua's tables
 // TODO Moving reference values between states
 
 public class TestMain {
@@ -307,9 +304,11 @@ public class TestMain {
 
     public static void testUserData() {
         try (LuaState state = new LuaState()) {
-            state.setGlobal("ud", LuaValue.userdata(new TestUserData()));
-            Object object = ((UserDataValue)state.getGlobal("ud")).getValue();
-            assertTrue(object instanceof TestUserData);
+            UserData test = new TestUserData();
+            state.setGlobal("ud", test);
+            UserData ud = ((UserData)state.getGlobal("ud"));
+            assertTrue(ud instanceof TestUserData);
+            assertTrue(ud == test);
         }
     }
 
@@ -340,5 +339,5 @@ public class TestMain {
         }
     }
 
-    private static class TestUserData { }
+    private static class TestUserData extends UserData { }
 }

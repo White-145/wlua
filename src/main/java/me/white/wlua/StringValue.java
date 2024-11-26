@@ -3,6 +3,7 @@ package me.white.wlua;
 import java.lang.foreign.Arena;
 import java.lang.foreign.ValueLayout;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Objects;
 
 public final class StringValue extends LuaValue {
@@ -17,14 +18,8 @@ public final class StringValue extends LuaValue {
 
     public StringValue(byte[] bytes) {
         Objects.requireNonNull(bytes);
+        value = new String(bytes, StandardCharsets.UTF_8);
         this.bytes = bytes;
-        int i;
-        for (i = 0; i < bytes.length; ++i) {
-            if (bytes[i] == 0) {
-                break;
-            }
-        }
-        value = new String(bytes, 0, i, StandardCharsets.UTF_8);
     }
 
     StringValue(String value, byte[] bytes) {
@@ -32,6 +27,12 @@ public final class StringValue extends LuaValue {
         Objects.requireNonNull(bytes);
         this.value = value;
         this.bytes = bytes;
+    }
+
+    public byte[] getBytes() {
+        byte[] arr = new byte[bytes.length];
+        System.arraycopy(bytes, 0, arr, 0, bytes.length);
+        return arr;
     }
 
     @Override
@@ -79,7 +80,7 @@ public final class StringValue extends LuaValue {
         if (!(obj instanceof StringValue)) {
             return false;
         }
-        return value.equals(((StringValue)obj).value);
+        return Arrays.equals(bytes, ((StringValue)obj).bytes);
     }
 
     @Override
