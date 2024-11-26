@@ -47,14 +47,14 @@ public enum ValueType {
         @Override
         LuaValue fromStack(LuaThread thread, int index) {
             LuaState state = thread.getState();
-            return new TableValue(state, state.getReference(index));
+            return state.getReference(thread, index, reference -> new TableValue(state, reference));
         }
     },
     FUNCTION(LuaBindings.TFUNCTION, "function", FunctionValue.class) {
         @Override
         LuaValue fromStack(LuaThread thread, int index) {
             LuaState state = thread.getState();
-            return new FunctionValue(state, state.getReference(index));
+            return state.getReference(thread, index, reference -> new FunctionValue(state, reference));
         }
     },
     USER_DATA(LuaBindings.TUSERDATA, "userdata", UserData.class) {

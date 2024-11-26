@@ -5,7 +5,6 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 
 public sealed class LuaThread extends LuaValue implements AutoCloseable permits LuaState {
-    protected static final String STATE_ID_FIELD = "state_id";
     private final LuaState state;
     protected final int id;
     protected boolean isClosed = false;
@@ -26,16 +25,7 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
     static LuaThread getThread(MemorySegment address) {
         LuaBindings.pushthread(address);
         if (LuaBindings.gettable(address, LuaBindings.REGISTRYINDEX) != LuaBindings.TNUMBER) {
-            try (Arena arena = Arena.ofConfined()) {
-                if (LuaBindings.getfield(address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(STATE_ID_FIELD)) != LuaBindings.TNUMBER) {
-                    throw new IllegalStateException("Could not adopt foreign thread.");
-                }
-            }
-            int id = LuaBindings.tointegerx(address, LuaBindings.REGISTRYINDEX, MemorySegment.NULL);
-            LuaState state = (LuaState)ObjectRegistry.get(id);
-            LuaThread thread = new LuaThread(state, address);
-            state.threads.add(state);
-            return thread;
+            throw new IllegalStateException("Could not adopt foreign thread.");
         }
         int id = LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
         LuaBindings.settop(address, -2);

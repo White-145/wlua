@@ -1,9 +1,7 @@
 package me.white.wlua;
 
-import java.lang.reflect.Field;
 import java.util.*;
 
-// TODO Reference identity
 // TODO Metatables
 // TODO Java module
 // TODO Moving reference values between states
@@ -18,7 +16,6 @@ public class TestMain {
     public static void main(String[] args) {
         testState();
         testProgram();
-        testReferences();
         testValues();
         testFunction();
         testTable();
@@ -111,29 +108,11 @@ public class TestMain {
             LuaValue ref1 = state.getGlobal("a");
             LuaValue ref2 = state.getGlobal("a");
             assertTrue(ref1.equals(ref2));
-//            assertTrue(ref1 == ref2); TODO reference identity ^
+            assertTrue(ref1 == ref2);
             value = new StringValue("abc\0def");
             state.setGlobal("val", value);
             assertTrue(state.getGlobal("val").equals(new StringValue(new byte[]{ 'a', 'b', 'c', 0, 'd', 'e', 'f' })));
         }
-    }
-
-    public static void testReferences() {
-        LuaState state = new LuaState();
-        Set<?> references;
-        try {
-            Field field = LuaState.class.getDeclaredField("references");
-            field.setAccessible(true);
-            references = (Set<?>)field.get(state);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
-        LuaValue.load(state, "a = nil");
-        {
-            LuaValue a = state.getGlobalTable();
-        }
-        state.close();
-//        assertTrue(references.isEmpty());
     }
 
     public static void testFunction() {
@@ -205,14 +184,6 @@ public class TestMain {
             assertTrue(table.keySet().isEmpty());
             assertTrue(table.values().isEmpty());
             assertTrue(table.entrySet().isEmpty());
-        }
-    }
-
-    private static void printList(ListValue list, String prefix) {
-        int size = list.size();
-        System.out.println("List of size " + size + ": (" + prefix + ")");
-        for (int i = 0; i < size; ++i) {
-            System.out.println(i + ": " + list.get(i));
         }
     }
 
