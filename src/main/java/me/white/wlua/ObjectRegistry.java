@@ -29,21 +29,24 @@ class ObjectRegistry {
         try (Arena arena = Arena.ofConfined()) {
             int id = register(object);
             LuaBindings.newuserdatauv(thread.address, 0, 1);
+            LuaBindings.newuserdatauv(thread.address, 0, 1);
             LuaBindings.pushinteger(thread.address, id);
             LuaBindings.setiuservalue(thread.address, -2, 1);
             if (LuaBindings.auxiliaryNewmetatable(thread.address, arena.allocateFrom(METATABLE_NAME)) == 1) {
-                LuaBindings.pushvalue(thread.address, -1);
+                LuaBindings.pushvalue(thread.address, -2);
                 LuaBindings.pushcclosure(thread.address, LuaState.GC_FUNCTION, 1);
                 LuaBindings.setfield(thread.address, -2, arena.allocateFrom("__gc"));
             }
             LuaBindings.setmetatable(thread.address, -2);
+            LuaBindings.setiuservalue(thread.address, -2, 1);
         }
     }
 
     static int from(LuaThread thread, int index) {
         LuaBindings.getiuservalue(thread.address, -1, 1);
+        LuaBindings.getiuservalue(thread.address, -1, 1);
         int id = LuaBindings.tointegerx(thread.address, -1, MemorySegment.NULL);
-        LuaBindings.settop(thread.address, -2);
+        LuaBindings.settop(thread.address, -3);
         return id;
     }
 }

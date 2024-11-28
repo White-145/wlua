@@ -33,8 +33,9 @@ public final class LuaState extends LuaThread {
 
     private static int runFunction(MemorySegment address) {
         LuaBindings.getiuservalue(address, LuaBindings.REGISTRYINDEX - 1, 1);
+        LuaBindings.getiuservalue(address, -1, 1);
         int id = LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
-        LuaBindings.settop(address, -2);
+        LuaBindings.settop(address, -3);
         Object object = ObjectRegistry.get(id);
         if (!(object instanceof JavaFunction)) {
             try (Arena arena = Arena.ofConfined()) {
@@ -67,20 +68,24 @@ public final class LuaState extends LuaThread {
         }
         LuaBindings.pushvalue(address, absindex);
         LuaBindings.gettable(address, -2);
+        int reference;
         if (LuaBindings.isinteger(address, -1) == 1) {
-            int reference = LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
+            reference = LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
             LuaBindings.settop(address, -3);
-            return references.get(reference).get();
+            if (references.get(reference) != null) {
+                return references.get(reference).get();
+            }
+        } else {
+            reference = nextReference;
+            nextReference += 1;
+            LuaBindings.pushvalue(address, absindex);
+            LuaBindings.pushinteger(address, reference);
+            LuaBindings.settable(address, -4);
+            LuaBindings.pushinteger(address, reference);
+            LuaBindings.pushvalue(address, absindex);
+            LuaBindings.settable(address, -4);
+            LuaBindings.settop(address, -3);
         }
-        int reference = nextReference;
-        nextReference += 1;
-        LuaBindings.pushvalue(address, absindex);
-        LuaBindings.pushinteger(address, reference);
-        LuaBindings.settable(address, -4);
-        LuaBindings.pushinteger(address, reference);
-        LuaBindings.pushvalue(address, absindex);
-        LuaBindings.settable(address, -4);
-        LuaBindings.settop(address, -3);
         RefValue value = provider.apply(reference);
         references.put(reference, new WeakReference<>(value));
         return value;

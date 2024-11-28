@@ -2,9 +2,40 @@ package me.white.wlua;
 
 import java.util.*;
 
-// TODO Metatables
-// TODO Java module
-// TODO Moving reference values between states
+// TODO * Value operations
+// TODO ^ Use raw operations in TableValue and ListValue
+// TODO * Java module
+// TODO * Replace enum ValueType with classes for casting
+// TODO * Lua-side UserData identity
+// TODO ^ Update UserData metatable dynamically
+// TODO ^ Moving reference values between states
+// TODO ^ FUCK IT We are rewriting tables and functions to be java-centric as well!
+// TODO * Create object GC metatable manually
+
+/*
+function random_choice(list)
+    local i = math.round(math.random() * (#list - 1) + 1)
+    return list[i]
+end
+
+items = {
+    item.new("cobblestone"),
+    item.new("oak_planks"),
+    item.new("diamond")
+}
+
+event.player_join.register(function(event)
+    local player = event.player
+    player.set_gamemode(gamemode.survival)
+    player.give_items(item.new("iron_pickaxe"))
+end)
+
+event.player_block_destroy.register(function(event)
+    local player = event.player
+    local item = random_choice(items)
+    player.give_items(item)
+end)
+ */
 
 public class TestMain {
     private static void assertTrue(boolean condition) {
@@ -20,7 +51,7 @@ public class TestMain {
         testFunction();
         testTable();
         testList();
-        testUserData();
+        testUserDataAndMetaTables();
         testCoroutinesAndThreads();
     }
 
@@ -273,13 +304,45 @@ public class TestMain {
         }
     }
 
-    public static void testUserData() {
+    public static void testUserDataAndMetaTables() {
         try (LuaState state = new LuaState()) {
-            UserData test = new TestUserData();
+            UserData test = new TestUserData(7);
             state.setGlobal("ud", test);
             UserData ud = ((UserData)state.getGlobal("ud"));
             assertTrue(ud instanceof TestUserData);
             assertTrue(ud == test);
+            TableValue metatable = LuaValue.fromMap(state, Map.of(
+                    LuaValue.of("__add"), LuaValue.fromFunction(state, (thread, args) -> {
+                        TestUserData left = args.checkUserData(0, TestUserData.class, "__add", "expected TestUserData");
+                        NumberValue right = (NumberValue)args.checkValue(1, ValueType.NUMBER, "__add");
+                        return new VarArg(LuaValue.of(left.x + right.toNumber()));
+                    }),
+                    LuaValue.of("__call"), LuaValue.fromFunction(state, (thread, args) -> {
+                        assertTrue(args.size() == 2);
+                        StringValue value = (StringValue)args.checkValue(1, ValueType.STRING, "__call");
+                        assertTrue(value.toString().equals("call"));
+                        return new VarArg(LuaValue.of(-1), LuaValue.of(-2));
+                    })
+            ));
+            test.setMetaTable(state, metatable);
+            assertTrue(test.getMetaTable(state).containsKey(LuaValue.of("__add")));
+            state.setGlobal("ud", test);
+            state.run("a = ud + 4.5");
+            assertTrue(state.getGlobal("a").equals(LuaValue.of(11.5)));
+            state.run("a, b = ud('call')");
+            assertTrue(state.getGlobal("a").equals(LuaValue.of(-1)));
+            assertTrue(state.getGlobal("b").equals(LuaValue.of(-2)));
+            test.setMetaTable(state, null);
+            assertTrue(test.getMetaTable(state) == null);
+            metatable = LuaValue.fromMap(state, Map.of(
+                    LuaValue.of("__name"), LuaValue.of("test table")
+            ));
+            TableValue table = LuaValue.table(state);
+            table.setMetaTable(state, metatable);
+            Library.BASE.open(state);
+            state.setGlobal("table", table);
+            state.run("a = tostring(table)");
+            assertTrue(state.getGlobal("a").toString().startsWith("test table"));
         }
     }
 
@@ -310,5 +373,11 @@ public class TestMain {
         }
     }
 
-    private static class TestUserData extends UserData { }
+    private static class TestUserData extends UserData {
+        final int x;
+
+        public TestUserData(int x) {
+            this.x = x;
+        }
+    }
 }

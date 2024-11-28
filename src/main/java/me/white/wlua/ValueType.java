@@ -61,8 +61,9 @@ public enum ValueType {
         @Override
         LuaValue fromStack(LuaThread thread, int index) {
             LuaBindings.getiuservalue(thread.address, index, 1);
+            LuaBindings.getiuservalue(thread.address, -1, 1);
             int id = LuaBindings.tointegerx(thread.address, -1, MemorySegment.NULL);
-            LuaBindings.settop(thread.address, -2);
+            LuaBindings.settop(thread.address, -3);
             Object object = ObjectRegistry.get(id);
             if (!(object instanceof UserData)) {
                 throw new IllegalArgumentException("Could not get userdata value.");

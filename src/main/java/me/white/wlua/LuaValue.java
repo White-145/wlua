@@ -82,12 +82,41 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
         return fromMap(thread, map).getList();
     }
 
+    public static TableValue table(LuaThread thread) {
+        return fromMap(thread, Map.of());
+    }
+
+    public static ListValue list(LuaThread thread) {
+        return table(thread).getList();
+    }
+
     public static IntegerValue index(int index) {
         return new IntegerValue(index + 1);
     }
 
     public static boolean isNil(Object value) {
         return !(value instanceof LuaValue) || ((LuaValue)value).isNil();
+    }
+
+    public static LuaValue orNull(LuaValue value) {
+        return isNil(value) ? null : value;
+    }
+
+    public TableValue getMetaTable(LuaThread thread) {
+        thread.checkIsAlive();
+        thread.pushValue(this);
+        LuaBindings.getmetatable(thread.address, -1);
+        LuaValue value = from(thread, -1);
+        LuaBindings.settop(thread.address, -3);
+        return (TableValue)orNull(value);
+    }
+
+    public void setMetaTable(LuaThread thread, TableValue metatable) {
+        thread.checkIsAlive();
+        thread.pushValue(this);
+        thread.pushValue(metatable);
+        LuaBindings.setmetatable(thread.address, -2);
+        LuaBindings.settop(thread.address, -2);
     }
 
     public boolean isNil() {

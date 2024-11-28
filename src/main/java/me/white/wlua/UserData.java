@@ -1,6 +1,18 @@
 package me.white.wlua;
 
 public non-sealed class UserData extends LuaValue {
+    private TableValue metatable = null;
+
+    @Override
+    public final TableValue getMetaTable(LuaThread thread) {
+        return metatable;
+    }
+
+    @Override
+    public final void setMetaTable(LuaThread thread, TableValue metatable) {
+        this.metatable = metatable;
+    }
+
     @Override
     public final boolean isNil() {
         return super.isNil();
@@ -29,6 +41,8 @@ public non-sealed class UserData extends LuaValue {
     @Override
     final void push(LuaThread thread) {
         ObjectRegistry.pushObject(thread, this);
+        thread.pushValue(metatable);
+        LuaBindings.setmetatable(thread.address, -2);
     }
 
     @Override

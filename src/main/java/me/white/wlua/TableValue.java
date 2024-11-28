@@ -88,9 +88,9 @@ public final class TableValue extends RefValue implements Map<LuaValue, LuaValue
         state.pushValue(this);
         state.pushValue((LuaValue)key);
         LuaBindings.gettable(state.address, -2);
-        LuaValue returnValue = LuaValue.from(state, -1);
+        LuaValue value = LuaValue.from(state, -1);
         LuaBindings.settop(state.address, -3);
-        return returnValue.isNil() ? null : returnValue;
+        return LuaValue.orNull(value);
     }
 
     @Override
@@ -107,7 +107,7 @@ public final class TableValue extends RefValue implements Map<LuaValue, LuaValue
         state.pushValue(value);
         LuaBindings.settable(state.address, -4);
         LuaBindings.settop(state.address, -3);
-        return returnValue.isNil() ? null : returnValue;
+        return LuaValue.orNull(returnValue);
     }
 
     @Override

@@ -492,9 +492,9 @@ class LuaBindings {
         }
     }
 
-    static int getmetatable(MemorySegment L, MemorySegment tname) {
+    static int getmetatable(MemorySegment L, int index) {
         try {
-            return (int)GETMETATABLE_HANDLE.invokeExact(L, tname);
+            return (int)GETMETATABLE_HANDLE.invokeExact(L, index);
         } catch (Throwable e) {
             throw new AssertionError(e);
         }

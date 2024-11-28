@@ -319,7 +319,7 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
         LuaBindings.geti(state.address, -1, index + 1);
         LuaValue value = LuaValue.from(state, -1);
         LuaBindings.settop(state.address, -3);
-        return value.isNil() ? null : value;
+        return LuaValue.orNull(value);
     }
 
     @Override
@@ -333,7 +333,7 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
         state.pushValue(element);
         LuaBindings.seti(state.address, -3, index + 1);
         LuaBindings.settop(state.address, -3);
-        return value.isNil() ? null : value;
+        return LuaValue.orNull(value);
     }
 
     @Override
@@ -361,7 +361,7 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
         LuaBindings.seti(state.address, -3, index + 1);
         collapse(-2, size, index);
         LuaBindings.settop(state.address, -3);
-        return value.isNil() ? null : value;
+        return LuaValue.orNull(value);
     }
 
     @Override
