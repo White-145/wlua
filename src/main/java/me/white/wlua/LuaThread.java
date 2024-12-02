@@ -10,10 +10,11 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
     boolean isClosed = false;
 
     LuaThread(LuaState state, MemorySegment address) {
-        this.state = state;
-        if (state != null) {
-            state.threads.add(this);
+        double version = LuaBindings.version(address);
+        if (version != LuaBindings.VERSION_NUM) {
+            throw new IllegalStateException("Wrong version of lua detected (expected: " + (double)LuaBindings.VERSION_NUM + ", detected: " + version + ").");
         }
+        this.state = state;
         this.address = address;
         int id = ObjectManager.create(this);
         LuaBindings.pushthread(address);

@@ -65,7 +65,9 @@ public final class LuaState extends LuaThread {
     public LuaThread subThread() {
         MemorySegment threadAddress = LuaBindings.newthread(address);
         LuaBindings.settop(address, -2);
-        return new LuaThread(this, threadAddress);
+        LuaThread thread = new LuaThread(this, threadAddress);
+        threads.add(thread);
+        return thread;
     }
 
     public boolean isSubThread(LuaThread thread) {

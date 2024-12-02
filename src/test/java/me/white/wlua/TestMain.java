@@ -3,10 +3,9 @@ package me.white.wlua;
 import java.util.*;
 
 // TODO * Value operations
-// TODO ^ Use raw operations in TableValue and ListValue
 // TODO * Moving reference values between states
 // TODO * Create object GC metatable manually
-// TODO * Add ASSUMING comments in questionable parts
+// TODO * Add ASSUMING and NOTE comments in questionable parts
 // TODO * Use set list size like lua does?
 // TODO * Perchance make a separate auxiliary thread for using with java?
 
