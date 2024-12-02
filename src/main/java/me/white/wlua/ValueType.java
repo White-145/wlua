@@ -4,20 +4,23 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 
+// ASSUMING all entries follow the order of their type ids in LuaBindings
 public enum ValueType {
-    NIL(LuaBindings.TNIL, "nil", NilValue.class) {
+    NIL("nil") {
         @Override
         LuaValue fromStack(LuaThread thread, int index) {
             return NilValue.INSTANCE;
         }
     },
-    BOOLEAN(LuaBindings.TBOOLEAN, "boolean", BooleanValue.class) {
+    BOOLEAN("boolean") {
         @Override
         LuaValue fromStack(LuaThread thread, int index) {
             return LuaBindings.toboolean(thread.address, index) == 1 ? BooleanValue.TRUE : BooleanValue.FALSE;
         }
     },
-    NUMBER(LuaBindings.TNUMBER, "number", NumberValue.class) {
+    // ASSUMING is never used
+    LIGHT_USER_DATA("light user data"),
+    NUMBER("number") {
         @Override
         LuaValue fromStack(LuaThread thread, int index) {
             if (LuaBindings.isinteger(thread.address, index) == 1) {
@@ -26,7 +29,7 @@ public enum ValueType {
             return new NumberValue(LuaBindings.tonumberx(thread.address, index, MemorySegment.NULL));
         }
     },
-    STRING(LuaBindings.TSTRING, "string", StringValue.class) {
+    STRING("string") {
         @Override
         LuaValue fromStack(LuaThread thread, int index) {
             LuaBindings.pushvalue(thread.address, index);
@@ -43,35 +46,35 @@ public enum ValueType {
             return new StringValue(value, bytes);
         }
     },
-    TABLE(LuaBindings.TTABLE, "table", TableValue.class) {
+    TABLE("table") {
         @Override
         LuaValue fromStack(LuaThread thread, int index) {
             LuaState state = thread.getState();
-            return state.getReference(thread, index, reference -> new TableValue(state, reference));
+            return state.references.getReference(thread, index, reference -> new TableValue(state, reference));
         }
     },
-    FUNCTION(LuaBindings.TFUNCTION, "function", FunctionValue.class) {
+    FUNCTION("function") {
         @Override
         LuaValue fromStack(LuaThread thread, int index) {
             LuaState state = thread.getState();
-            return state.getReference(thread, index, reference -> new FunctionValue(state, reference));
+            return state.references.getReference(thread, index, reference -> new FunctionValue(state, reference));
         }
     },
-    USER_DATA(LuaBindings.TUSERDATA, "userdata", UserData.class) {
+    USER_DATA("userdata") {
         @Override
         LuaValue fromStack(LuaThread thread, int index) {
             LuaBindings.getiuservalue(thread.address, index, 1);
             LuaBindings.getiuservalue(thread.address, -1, 1);
             int id = LuaBindings.tointegerx(thread.address, -1, MemorySegment.NULL);
             LuaBindings.settop(thread.address, -3);
-            Object object = ObjectRegistry.get(id);
+            Object object = ObjectManager.get(id);
             if (!(object instanceof UserData)) {
                 throw new IllegalArgumentException("Could not get userdata value.");
             }
             return (UserData)object;
         }
     },
-    THREAD(LuaBindings.TTHREAD, "thread", LuaThread.class) {
+    THREAD("thread") {
         @Override
         LuaValue fromStack(LuaThread thread, int index) {
             MemorySegment address = LuaBindings.tothread(thread.address, index);
@@ -79,32 +82,18 @@ public enum ValueType {
         }
     };
 
-    final int id;
     final String name;
-    final Class<?> clazz;
 
-    ValueType(int id, String name, Class<?> clazz) {
-        this.id = id;
+    ValueType(String name) {
         this.name = name;
-        this.clazz = clazz;
     }
 
+    // ASSUMING id is ever -1 or valid
     static ValueType fromId(int id) {
-        for (ValueType type : ValueType.values()) {
-            if (type.id == id) {
-                return type;
-            }
+        if (id == LuaBindings.TNONE) {
+            return null;
         }
-        return null;
-    }
-
-    public static ValueType fromClass(Class<?> clazz) {
-        for (ValueType type : ValueType.values()) {
-            if (type.clazz.isAssignableFrom(clazz)) {
-                return type;
-            }
-        }
-        return null;
+        return values()[id];
     }
 
     LuaValue fromStack(LuaThread thread, int index) {

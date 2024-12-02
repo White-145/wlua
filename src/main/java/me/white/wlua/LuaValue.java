@@ -52,7 +52,7 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
         Objects.requireNonNull(thread);
         thread.checkIsAlive();
         Objects.requireNonNull(function);
-        ObjectRegistry.pushObject(thread, function);
+        thread.pushObject(function);
         LuaBindings.pushcclosure(thread.address, LuaState.RUN_FUNCTION, 1);
         LuaValue value = from(thread, -1);
         LuaBindings.settop(thread.address, -2);
@@ -105,10 +105,13 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
     public TableValue getMetaTable(LuaThread thread) {
         thread.checkIsAlive();
         thread.pushValue(this);
-        LuaBindings.getmetatable(thread.address, -1);
+        if (LuaBindings.getmetatable(thread.address, -1) == 0) {
+            LuaBindings.settop(thread.address, -2);
+            return null;
+        }
         LuaValue value = from(thread, -1);
         LuaBindings.settop(thread.address, -3);
-        return (TableValue)orNull(value);
+        return (TableValue)value;
     }
 
     public void setMetaTable(LuaThread thread, TableValue metatable) {

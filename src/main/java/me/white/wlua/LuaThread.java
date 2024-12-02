@@ -16,7 +16,7 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
             state.threads.add(this);
         }
         this.address = address;
-        id = ObjectRegistry.register(this);
+        id = ObjectManager.create(this);
         LuaBindings.pushthread(address);
         LuaBindings.pushinteger(address, id);
         LuaBindings.settable(address, LuaBindings.REGISTRYINDEX);
@@ -29,7 +29,7 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
         }
         int id = LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
         LuaBindings.settop(address, -2);
-        return (LuaThread)ObjectRegistry.get(id);
+        return (LuaThread)ObjectManager.get(id);
     }
 
     void pushValue(LuaValue value) {
@@ -38,6 +38,17 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
         } else {
             value.push(this);
         }
+    }
+
+    void pushObject(Object object) {
+        int id = ObjectManager.create(object);
+        LuaBindings.newuserdatauv(address, 0, 1);
+        LuaBindings.newuserdatauv(address, 0, 1);
+        LuaBindings.pushinteger(address, id);
+        LuaBindings.setiuservalue(address, -2, 1);
+        LuaBindings.geti(address, LuaBindings.REGISTRYINDEX, LuaState.RIDX_GC_METATABLE);
+        LuaBindings.setmetatable(address, -2);
+        LuaBindings.setiuservalue(address, -2, 1);
     }
 
     public LuaState getState() {

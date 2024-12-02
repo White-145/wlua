@@ -18,7 +18,7 @@ public sealed abstract class RefValue extends LuaValue permits FunctionValue, Ta
     }
 
     public boolean isAlive() {
-        return state.hasReference(reference);
+        return state.references.hasReference(reference);
     }
 
     public void checkIsAlive() {
@@ -34,7 +34,7 @@ public sealed abstract class RefValue extends LuaValue permits FunctionValue, Ta
     @Override
     final void push(LuaThread thread) {
         checkIsAlive();
-        state.fromReference(reference, thread);
+        state.references.fromReference(thread, reference);
     }
 
     @Override
@@ -65,7 +65,7 @@ public sealed abstract class RefValue extends LuaValue permits FunctionValue, Ta
 
         @Override
         public void run() {
-            state.cleanReference(reference);
+            state.references.cleanReference(reference);
         }
     }
 }

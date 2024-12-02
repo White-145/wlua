@@ -4,38 +4,16 @@ import java.util.*;
 
 // TODO * Value operations
 // TODO ^ Use raw operations in TableValue and ListValue
-// TODO * Java module
-// TODO * Replace enum ValueType with classes for casting
 // TODO * Lua-side UserData identity
-// TODO ^ Update UserData metatable dynamically
 // TODO ^ Moving reference values between states
-// TODO ^ FUCK IT We are rewriting tables and functions to be java-centric as well!
 // TODO * Create object GC metatable manually
+// TODO * Add ASSUMING comments in questionable parts
+// TODO * Pre-allocate common strings
+// TODO * Use set list size like lua does?
+// TODO * Perchance make a separate auxiliary thread for using with java?
 
-/*
-function random_choice(list)
-    local i = math.round(math.random() * (#list - 1) + 1)
-    return list[i]
-end
-
-items = {
-    item.new("cobblestone"),
-    item.new("oak_planks"),
-    item.new("diamond")
-}
-
-event.player_join.register(function(event)
-    local player = event.player
-    player.set_gamemode(gamemode.survival)
-    player.give_items(item.new("iron_pickaxe"))
-end)
-
-event.player_block_destroy.register(function(event)
-    local player = event.player
-    local item = random_choice(items)
-    player.give_items(item)
-end)
- */
+// TODO * Java module
+// TODO * Publish
 
 public class TestMain {
     private static void assertTrue(boolean condition) {
@@ -45,13 +23,21 @@ public class TestMain {
     }
 
     public static void main(String[] args) {
+        System.out.println("state");
         testState();
+        System.out.println("program");
         testProgram();
+        System.out.println("values");
         testValues();
+        System.out.println("function");
         testFunction();
+        System.out.println("table");
         testTable();
+        System.out.println("list");
         testList();
+        System.out.println("userdata");
         testUserDataAndMetaTables();
+        System.out.println("coroutines");
         testCoroutinesAndThreads();
     }
 
@@ -143,6 +129,7 @@ public class TestMain {
             value = new StringValue("abc\0def");
             state.setGlobal("val", value);
             assertTrue(state.getGlobal("val").equals(new StringValue(new byte[]{ 'a', 'b', 'c', 0, 'd', 'e', 'f' })));
+            System.gc();
         }
     }
 
@@ -308,6 +295,11 @@ public class TestMain {
         try (LuaState state = new LuaState()) {
             UserData test = new TestUserData(7);
             state.setGlobal("ud", test);
+            state.setGlobal("ud2", test);
+            state.run("a = ud == ud2");
+            assertTrue(state.getGlobal("a").toBoolean());
+            assertTrue(state.getGlobal("ud") == state.getGlobal("ud2"));
+            assertTrue(state.getGlobal("ud") == test);
             UserData ud = ((UserData)state.getGlobal("ud"));
             assertTrue(ud instanceof TestUserData);
             assertTrue(ud == test);
@@ -326,7 +318,6 @@ public class TestMain {
             ));
             test.setMetaTable(state, metatable);
             assertTrue(test.getMetaTable(state).containsKey(LuaValue.of("__add")));
-            state.setGlobal("ud", test);
             state.run("a = ud + 4.5");
             assertTrue(state.getGlobal("a").equals(LuaValue.of(11.5)));
             state.run("a, b = ud('call')");

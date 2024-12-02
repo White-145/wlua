@@ -1,16 +1,12 @@
 package me.white.wlua;
 
 public non-sealed class UserData extends LuaValue {
-    private TableValue metatable = null;
+    private static int nextId = 1;
+    private final int id;
 
-    @Override
-    public final TableValue getMetaTable(LuaThread thread) {
-        return metatable;
-    }
-
-    @Override
-    public final void setMetaTable(LuaThread thread, TableValue metatable) {
-        this.metatable = metatable;
+    {
+        id = nextId;
+        nextId += 1;
     }
 
     @Override
@@ -40,9 +36,15 @@ public non-sealed class UserData extends LuaValue {
 
     @Override
     final void push(LuaThread thread) {
-        ObjectRegistry.pushObject(thread, this);
-        thread.pushValue(metatable);
-        LuaBindings.setmetatable(thread.address, -2);
+        LuaBindings.geti(thread.address, LuaBindings.REGISTRYINDEX, LuaState.RIDX_USERDATAS);
+        if (LuaBindings.geti(thread.address, -1, id) == LuaBindings.TNIL) {
+            LuaBindings.settop(thread.address, -2);
+            thread.pushObject(this);
+            LuaBindings.pushvalue(thread.address, -1);
+            LuaBindings.seti(thread.address, -3, id);
+        }
+        LuaBindings.copy(thread.address, -1, -2);
+        LuaBindings.settop(thread.address, -2);
     }
 
     @Override

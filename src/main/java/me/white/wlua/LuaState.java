@@ -2,32 +2,43 @@ package me.white.wlua;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.ref.WeakReference;
 import java.util.*;
-import java.util.function.Function;
 
 public final class LuaState extends LuaThread {
-    private static final String REFERENCES_FIELD = "references";
     private static final Arena GLOBAL = Arena.ofAuto();
+    static final int RIDX_REFERENCES = 11;
+    static final int RIDX_GC_METATABLE = 12;
+    static final int RIDX_USERDATAS = 13;
     static final MemorySegment GC_FUNCTION = LuaBindings.stubCFunction(GLOBAL, LuaState::gcFunction);
     static final MemorySegment RUN_FUNCTION = LuaBindings.stubCFunction(GLOBAL, LuaState::runFunction);
-    private final Map<Integer, WeakReference<RefValue>> references = new HashMap<>();
-    private int nextReference = 1;
+    final RefManager references = new RefManager(this);
     final Set<LuaThread> threads = new HashSet<>();
 
     public LuaState() {
         super(null, LuaBindings.auxiliaryNewstate());
         LuaBindings.createtable(address, 0, 0);
+        LuaBindings.seti(address, LuaBindings.REGISTRYINDEX, RIDX_REFERENCES);
+        LuaBindings.createtable(address, 0, 1);
+        LuaBindings.pushcclosure(address, GC_FUNCTION, 0);
         try (Arena arena = Arena.ofConfined()) {
-            LuaBindings.setfield(address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(REFERENCES_FIELD));
+            LuaBindings.setfield(address, -2, arena.allocateFrom("__gc"));
         }
+        LuaBindings.seti(address, LuaBindings.REGISTRYINDEX, RIDX_GC_METATABLE);
+        LuaBindings.createtable(address, 0, 0);
+        LuaBindings.createtable(address, 0, 1);
+        try (Arena arena = Arena.ofConfined()) {
+            LuaBindings.pushstring(address, arena.allocateFrom("v"));
+            LuaBindings.setfield(address, -2, arena.allocateFrom("__mode"));
+        }
+        LuaBindings.setmetatable(address, -2);
+        LuaBindings.seti(address, LuaBindings.REGISTRYINDEX, RIDX_USERDATAS);
     }
 
     private static int gcFunction(MemorySegment address) {
-        LuaBindings.getiuservalue(address, LuaBindings.REGISTRYINDEX - 1, 1);
+        LuaBindings.getiuservalue(address, 1, 1);
         int id = LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
-        LuaBindings.settop(address, -2);
-        ObjectRegistry.remove(id);
+        LuaBindings.settop(address, -3);
+        ObjectManager.remove(id);
         return 0;
     }
 
@@ -36,7 +47,7 @@ public final class LuaState extends LuaThread {
         LuaBindings.getiuservalue(address, -1, 1);
         int id = LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
         LuaBindings.settop(address, -3);
-        Object object = ObjectRegistry.get(id);
+        Object object = ObjectManager.get(id);
         if (!(object instanceof JavaFunction)) {
             try (Arena arena = Arena.ofConfined()) {
                 LuaBindings.pushstring(address, arena.allocateFrom("error getting function"));
@@ -59,79 +70,6 @@ public final class LuaState extends LuaThread {
 
     public boolean isSubThread(LuaThread thread) {
         return thread == this || threads.contains(thread);
-    }
-
-    LuaValue getReference(LuaThread thread, int index, Function<Integer, RefValue> provider) {
-        int absindex = LuaBindings.absindex(address, index);
-        try (Arena arena = Arena.ofConfined()) {
-            LuaBindings.getfield(address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(REFERENCES_FIELD));
-        }
-        LuaBindings.pushvalue(address, absindex);
-        LuaBindings.gettable(address, -2);
-        int reference;
-        if (LuaBindings.isinteger(address, -1) == 1) {
-            reference = LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
-            LuaBindings.settop(address, -3);
-            if (references.get(reference) != null) {
-                return references.get(reference).get();
-            }
-        } else {
-            reference = nextReference;
-            nextReference += 1;
-            LuaBindings.pushvalue(address, absindex);
-            LuaBindings.pushinteger(address, reference);
-            LuaBindings.settable(address, -4);
-            LuaBindings.pushinteger(address, reference);
-            LuaBindings.pushvalue(address, absindex);
-            LuaBindings.settable(address, -4);
-            LuaBindings.settop(address, -3);
-        }
-        RefValue value = provider.apply(reference);
-        references.put(reference, new WeakReference<>(value));
-        return value;
-    }
-
-    boolean hasReference(int reference) {
-        if (!isAlive()) {
-            return false;
-        }
-        try (Arena arena = Arena.ofConfined()) {
-            LuaBindings.getfield(address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(REFERENCES_FIELD));
-        }
-        boolean contains = LuaBindings.geti(address, -1, reference) != LuaBindings.TNIL;
-        LuaBindings.settop(address, -3);
-        return contains;
-    }
-
-    void fromReference(int reference, LuaThread thread) {
-        if (!isSubThread(thread)) {
-            throw new IllegalStateException("Could not move references between states.");
-        }
-        try (Arena arena = Arena.ofConfined()) {
-            LuaBindings.getfield(thread.address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(REFERENCES_FIELD));
-        }
-        LuaBindings.pushinteger(thread.address, reference);
-        LuaBindings.gettable(thread.address, -2);
-        LuaBindings.copy(thread.address, -1, -2);
-        LuaBindings.settop(thread.address, -2);
-    }
-
-    void cleanReference(int reference) {
-        if (!hasReference(reference)) {
-            return;
-        }
-        references.remove(reference);
-        try (Arena arena = Arena.ofConfined()) {
-            LuaBindings.getfield(address, LuaBindings.REGISTRYINDEX, arena.allocateFrom(REFERENCES_FIELD));
-        }
-        LuaBindings.pushinteger(address, reference);
-        LuaBindings.gettable(address, -2);
-        LuaBindings.pushnil(address);
-        LuaBindings.settable(address, -3);
-        LuaBindings.pushinteger(address, reference);
-        LuaBindings.pushnil(address);
-        LuaBindings.settable(address, -3);
-        LuaBindings.settop(address, -2);
     }
 
     @Override

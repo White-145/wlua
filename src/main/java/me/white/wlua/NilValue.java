@@ -43,6 +43,6 @@ public final class NilValue extends LuaValue {
 
     @Override
     public int hashCode() {
-        return 0;
+        return -98518;
     }
 }
