@@ -20,6 +20,11 @@ public non-sealed class UserData extends LuaValue {
     }
 
     @Override
+    public final boolean isInteger() {
+        return super.isInteger();
+    }
+
+    @Override
     public final boolean toBoolean() {
         return super.toBoolean();
     }

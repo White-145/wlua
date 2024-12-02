@@ -130,6 +130,10 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
         return false;
     }
 
+    public boolean isInteger() {
+        return false;
+    }
+
     public boolean toBoolean() {
         return true;
     }

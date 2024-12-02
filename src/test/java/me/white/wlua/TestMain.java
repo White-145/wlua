@@ -4,8 +4,7 @@ import java.util.*;
 
 // TODO * Value operations
 // TODO ^ Use raw operations in TableValue and ListValue
-// TODO * Lua-side UserData identity
-// TODO ^ Moving reference values between states
+// TODO * Moving reference values between states
 // TODO * Create object GC metatable manually
 // TODO * Add ASSUMING comments in questionable parts
 // TODO * Pre-allocate common strings

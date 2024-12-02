@@ -8,15 +8,15 @@ public class VarArg {
     private final LuaValue[] values;
 
     public VarArg(LuaValue ...values) {
-        int lastI = 0;
+        int size = 0;
         for (int i = 0; i < values.length; ++i) {
             if (values[i] == null) {
                 values[i] = LuaValue.nil();
             } else if (!values[i].isNil()) {
-                lastI = i + 1;
+                size = i + 1;
             }
         }
-        this.values = conform(values, lastI);
+        this.values = conform(values, size);
     }
 
     public VarArg(Collection<LuaValue> values) {
@@ -83,12 +83,52 @@ public class VarArg {
         return value;
     }
 
+    public LuaValue checkValue(int i, ValueType type, String function) throws LuaException {
+        return check(i, value -> value.getType() == type, function, "expected " + type);
+    }
+
+    public void checkNil(int i, String function) throws LuaException {
+        checkValue(i, ValueType.NIL, function);
+    }
+
+    public boolean checkBoolean(int i, String function) throws LuaException {
+        return checkValue(i, ValueType.BOOLEAN, function).toBoolean();
+    }
+
+    public double checkNumber(int i, String function) throws LuaException {
+        return check(i, LuaValue::isNumber, function, "expected number").toNumber();
+    }
+
+    public int checkInteger(int i, String function) throws LuaException {
+        return check(i, LuaValue::isInteger, function, "expected integer").toInteger();
+    }
+
+    public String checkString(int i, String function) throws LuaException {
+        return checkValue(i, ValueType.STRING, function).toString();
+    }
+
+    public byte[] checkBytes(int i, String function) throws LuaException {
+        return ((StringValue)checkValue(i, ValueType.STRING, function)).getBytes();
+    }
+
+    public TableValue checkTable(int i, String function) throws LuaException {
+        return (TableValue)checkValue(i, ValueType.TABLE, function);
+    }
+
+    public ListValue checkList(int i, String function) throws LuaException {
+        return checkTable(i, function).getList();
+    }
+
+    public FunctionValue checkFunction(int i, String function) throws LuaException {
+        return (FunctionValue)checkValue(i, ValueType.FUNCTION, function);
+    }
+
     @SuppressWarnings("unchecked")
     public <T extends UserData> T checkUserData(int i, Class<T> clazz, String function, String details) throws LuaException {
         return (T)check(i, value -> clazz.isAssignableFrom(value.getClass()), function, details);
     }
 
-    public LuaValue checkValue(int i, ValueType type, String function) {
-        return check(i, value -> value.getType() == type, function, "expected " + type);
+    public LuaThread checkThread(int i, String function) throws LuaException {
+        return (LuaThread)checkValue(i, ValueType.THREAD, function);
     }
 }

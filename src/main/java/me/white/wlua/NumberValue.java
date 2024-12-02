@@ -23,6 +23,11 @@ public sealed class NumberValue extends LuaValue permits IntegerValue {
     }
 
     @Override
+    public boolean isInteger() {
+        return Double.isFinite(value) && (int)value == value;
+    }
+
+    @Override
     public double toNumber() {
         return value;
     }

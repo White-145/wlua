@@ -58,6 +58,17 @@ public final class StringValue extends LuaValue {
     }
 
     @Override
+    public boolean isInteger() {
+        double number;
+        try {
+            number = Double.parseDouble(value);
+        } catch (NumberFormatException ignored) {
+            return false;
+        }
+        return Double.isFinite(number) && (int)number == number;
+    }
+
+    @Override
     public double toNumber() {
         return Double.parseDouble(value);
     }

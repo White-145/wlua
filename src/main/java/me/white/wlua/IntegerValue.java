@@ -18,6 +18,11 @@ public final class IntegerValue extends NumberValue {
     }
 
     @Override
+    public boolean isInteger() {
+        return true;
+    }
+
+    @Override
     public int toInteger() {
         return value;
     }
