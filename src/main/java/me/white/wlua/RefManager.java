@@ -17,9 +17,9 @@ class RefManager {
     
     LuaValue getReference(LuaThread thread, int index, Function<Integer, RefValue> provider) {
         int absindex = LuaBindings.absindex(state.address, index);
-        LuaBindings.geti(state.address, LuaBindings.REGISTRYINDEX, LuaState.RIDX_REFERENCES);
+        LuaBindings.rawgeti(state.address, LuaBindings.REGISTRYINDEX, LuaState.RIDX_REFERENCES);
         LuaBindings.pushvalue(thread.address, absindex);
-        LuaBindings.gettable(thread.address, -2);
+        LuaBindings.rawget(thread.address, -2);
         int reference;
         if (LuaBindings.isinteger(thread.address, -1) == 1) {
             reference = LuaBindings.tointegerx(thread.address, -1, MemorySegment.NULL);
@@ -47,8 +47,8 @@ class RefManager {
         if (!state.isAlive()) {
             return false;
         }
-        LuaBindings.geti(state.address, LuaBindings.REGISTRYINDEX, LuaState.RIDX_REFERENCES);
-        boolean contains = LuaBindings.geti(state.address, -1, reference) != LuaBindings.TNIL;
+        LuaBindings.rawgeti(state.address, LuaBindings.REGISTRYINDEX, LuaState.RIDX_REFERENCES);
+        boolean contains = LuaBindings.rawgeti(state.address, -1, reference) != LuaBindings.TNIL;
         LuaBindings.settop(state.address, -3);
         return contains;
     }
@@ -57,9 +57,9 @@ class RefManager {
         if (!state.isSubThread(thread)) {
             throw new IllegalStateException("Could not move references between states.");
         }
-        LuaBindings.geti(thread.address, LuaBindings.REGISTRYINDEX, LuaState.RIDX_REFERENCES);
+        LuaBindings.rawgeti(thread.address, LuaBindings.REGISTRYINDEX, LuaState.RIDX_REFERENCES);
         LuaBindings.pushinteger(thread.address, reference);
-        LuaBindings.gettable(thread.address, -2);
+        LuaBindings.rawget(thread.address, -2);
         LuaBindings.copy(thread.address, -1, -2);
         LuaBindings.settop(thread.address, -2);
     }
@@ -69,14 +69,14 @@ class RefManager {
             return;
         }
         references.remove(reference);
-        LuaBindings.geti(state.address, LuaBindings.REGISTRYINDEX, LuaState.RIDX_REFERENCES);
+        LuaBindings.rawgeti(state.address, LuaBindings.REGISTRYINDEX, LuaState.RIDX_REFERENCES);
         LuaBindings.pushinteger(state.address, reference);
-        LuaBindings.gettable(state.address, -2);
+        LuaBindings.rawget(state.address, -2);
         LuaBindings.pushnil(state.address);
-        LuaBindings.settable(state.address, -3);
+        LuaBindings.rawset(state.address, -3);
         LuaBindings.pushinteger(state.address, reference);
         LuaBindings.pushnil(state.address);
-        LuaBindings.settable(state.address, -3);
+        LuaBindings.rawset(state.address, -3);
         LuaBindings.settop(state.address, -2);
     }
 

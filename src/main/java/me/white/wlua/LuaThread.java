@@ -6,9 +6,8 @@ import java.lang.foreign.ValueLayout;
 
 public sealed class LuaThread extends LuaValue implements AutoCloseable permits LuaState {
     private final LuaState state;
-    protected final int id;
-    protected boolean isClosed = false;
     final MemorySegment address;
+    boolean isClosed = false;
 
     LuaThread(LuaState state, MemorySegment address) {
         this.state = state;
@@ -16,15 +15,15 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
             state.threads.add(this);
         }
         this.address = address;
-        id = ObjectManager.create(this);
+        int id = ObjectManager.create(this);
         LuaBindings.pushthread(address);
         LuaBindings.pushinteger(address, id);
-        LuaBindings.settable(address, LuaBindings.REGISTRYINDEX);
+        LuaBindings.rawset(address, LuaBindings.REGISTRYINDEX);
     }
 
     static LuaThread getThread(MemorySegment address) {
         LuaBindings.pushthread(address);
-        if (LuaBindings.gettable(address, LuaBindings.REGISTRYINDEX) != LuaBindings.TNUMBER) {
+        if (LuaBindings.rawget(address, LuaBindings.REGISTRYINDEX) != LuaBindings.TNUMBER) {
             throw new IllegalStateException("Could not adopt foreign thread.");
         }
         int id = LuaBindings.tointegerx(address, -1, MemorySegment.NULL);
@@ -46,7 +45,7 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
         LuaBindings.newuserdatauv(address, 0, 1);
         LuaBindings.pushinteger(address, id);
         LuaBindings.setiuservalue(address, -2, 1);
-        LuaBindings.geti(address, LuaBindings.REGISTRYINDEX, LuaState.RIDX_GC_METATABLE);
+        LuaBindings.rawgeti(address, LuaBindings.REGISTRYINDEX, LuaState.RIDX_GC_METATABLE);
         LuaBindings.setmetatable(address, -2);
         LuaBindings.setiuservalue(address, -2, 1);
     }
@@ -87,7 +86,7 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
 
     public TableValue getGlobalTable() {
         checkIsAlive();
-        LuaBindings.geti(address, LuaBindings.REGISTRYINDEX, LuaBindings.RIDX_GLOBALS);
+        LuaBindings.rawgeti(address, LuaBindings.REGISTRYINDEX, LuaBindings.RIDX_GLOBALS);
         TableValue value = (TableValue)LuaValue.from(this, -1);
         LuaBindings.settop(address, -2);
         return value;

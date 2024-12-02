@@ -6,32 +6,32 @@ import java.util.*;
 
 public final class LuaState extends LuaThread {
     private static final Arena GLOBAL = Arena.ofAuto();
+    private static final MemorySegment GC_FUNCTION = LuaBindings.stubCFunction(GLOBAL, LuaState::gcFunction);
+    static final MemorySegment RUN_FUNCTION = LuaBindings.stubCFunction(GLOBAL, LuaState::runFunction);
     static final int RIDX_REFERENCES = 11;
     static final int RIDX_GC_METATABLE = 12;
     static final int RIDX_USERDATAS = 13;
-    static final MemorySegment GC_FUNCTION = LuaBindings.stubCFunction(GLOBAL, LuaState::gcFunction);
-    static final MemorySegment RUN_FUNCTION = LuaBindings.stubCFunction(GLOBAL, LuaState::runFunction);
     final RefManager references = new RefManager(this);
     final Set<LuaThread> threads = new HashSet<>();
 
     public LuaState() {
         super(null, LuaBindings.auxiliaryNewstate());
         LuaBindings.createtable(address, 0, 0);
-        LuaBindings.seti(address, LuaBindings.REGISTRYINDEX, RIDX_REFERENCES);
+        LuaBindings.rawseti(address, LuaBindings.REGISTRYINDEX, RIDX_REFERENCES);
         LuaBindings.createtable(address, 0, 1);
         LuaBindings.pushcclosure(address, GC_FUNCTION, 0);
         try (Arena arena = Arena.ofConfined()) {
-            LuaBindings.setfield(address, -2, arena.allocateFrom("__gc"));
+            LuaBindings.rawsetp(address, -2, arena.allocateFrom("__gc"));
         }
-        LuaBindings.seti(address, LuaBindings.REGISTRYINDEX, RIDX_GC_METATABLE);
+        LuaBindings.rawseti(address, LuaBindings.REGISTRYINDEX, RIDX_GC_METATABLE);
         LuaBindings.createtable(address, 0, 0);
         LuaBindings.createtable(address, 0, 1);
         try (Arena arena = Arena.ofConfined()) {
             LuaBindings.pushstring(address, arena.allocateFrom("v"));
-            LuaBindings.setfield(address, -2, arena.allocateFrom("__mode"));
+            LuaBindings.rawsetp(address, -2, arena.allocateFrom("__mode"));
         }
         LuaBindings.setmetatable(address, -2);
-        LuaBindings.seti(address, LuaBindings.REGISTRYINDEX, RIDX_USERDATAS);
+        LuaBindings.rawseti(address, LuaBindings.REGISTRYINDEX, RIDX_USERDATAS);
     }
 
     private static int gcFunction(MemorySegment address) {

@@ -54,7 +54,7 @@ public final class TableValue extends RefValue implements Map<LuaValue, LuaValue
         }
         state.pushValue(this);
         state.pushValue((LuaValue)key);
-        boolean contains = LuaBindings.gettable(state.address, -2) != LuaBindings.TNIL;
+        boolean contains = LuaBindings.rawget(state.address, -2) != LuaBindings.TNIL;
         LuaBindings.settop(state.address, -3);
         return contains;
     }
@@ -87,7 +87,7 @@ public final class TableValue extends RefValue implements Map<LuaValue, LuaValue
         }
         state.pushValue(this);
         state.pushValue((LuaValue)key);
-        LuaBindings.gettable(state.address, -2);
+        LuaBindings.rawget(state.address, -2);
         LuaValue value = LuaValue.from(state, -1);
         LuaBindings.settop(state.address, -3);
         return LuaValue.orNull(value);
@@ -101,11 +101,11 @@ public final class TableValue extends RefValue implements Map<LuaValue, LuaValue
         }
         state.pushValue(this);
         state.pushValue(key);
-        LuaBindings.gettable(state.address, -2);
+        LuaBindings.rawget(state.address, -2);
         LuaValue returnValue = LuaValue.from(state, -1);
         state.pushValue(key);
         state.pushValue(value);
-        LuaBindings.settable(state.address, -4);
+        LuaBindings.rawset(state.address, -4);
         LuaBindings.settop(state.address, -3);
         return LuaValue.orNull(returnValue);
     }
@@ -126,7 +126,7 @@ public final class TableValue extends RefValue implements Map<LuaValue, LuaValue
             }
             state.pushValue(entry.getKey());
             state.pushValue(entry.getValue());
-            LuaBindings.settable(state.address, -3);
+            LuaBindings.rawset(state.address, -3);
         }
         LuaBindings.settop(state.address, -2);
     }
@@ -140,7 +140,7 @@ public final class TableValue extends RefValue implements Map<LuaValue, LuaValue
             LuaBindings.settop(state.address, -2);
             LuaBindings.pushvalue(state.address, -1);
             LuaBindings.pushnil(state.address);
-            LuaBindings.settable(state.address, -4);
+            LuaBindings.rawset(state.address, -4);
         }
         LuaBindings.settop(state.address, -2);
     }

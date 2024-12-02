@@ -41,12 +41,12 @@ public non-sealed class UserData extends LuaValue {
 
     @Override
     final void push(LuaThread thread) {
-        LuaBindings.geti(thread.address, LuaBindings.REGISTRYINDEX, LuaState.RIDX_USERDATAS);
-        if (LuaBindings.geti(thread.address, -1, id) == LuaBindings.TNIL) {
+        LuaBindings.rawgeti(thread.address, LuaBindings.REGISTRYINDEX, LuaState.RIDX_USERDATAS);
+        if (LuaBindings.rawgeti(thread.address, -1, id) == LuaBindings.TNIL) {
             LuaBindings.settop(thread.address, -2);
             thread.pushObject(this);
             LuaBindings.pushvalue(thread.address, -1);
-            LuaBindings.seti(thread.address, -3, id);
+            LuaBindings.rawseti(thread.address, -3, id);
         }
         LuaBindings.copy(thread.address, -1, -2);
         LuaBindings.settop(thread.address, -2);

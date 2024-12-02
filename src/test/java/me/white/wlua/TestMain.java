@@ -7,7 +7,6 @@ import java.util.*;
 // TODO * Moving reference values between states
 // TODO * Create object GC metatable manually
 // TODO * Add ASSUMING comments in questionable parts
-// TODO * Pre-allocate common strings
 // TODO * Use set list size like lua does?
 // TODO * Perchance make a separate auxiliary thread for using with java?
 
