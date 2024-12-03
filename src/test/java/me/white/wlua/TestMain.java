@@ -5,7 +5,6 @@ import java.util.*;
 // TODO * Moving reference values between states
 // TODO * Add ASSUMING and NOTE comments in questionable parts
 // TODO * Perchance make a separate auxiliary thread for using with java?
-// TODO * Sub-sub threads?
 // TODO * Proper error handling
 // TODO * Java module
 // TODO * Publish
