@@ -2,12 +2,11 @@ package me.white.wlua;
 
 import java.util.*;
 
-// TODO * Value operations
 // TODO * Moving reference values between states
-// TODO * Create object GC metatable manually
 // TODO * Add ASSUMING and NOTE comments in questionable parts
-// TODO * Use set list size like lua does?
 // TODO * Perchance make a separate auxiliary thread for using with java?
+// TODO * Sub-sub threads?
+// TODO * Proper error handling
 
 // TODO * Java module
 // TODO * Publish
@@ -73,7 +72,7 @@ public class TestMain {
             assertTrue(func instanceof FunctionValue);
             state.setGlobal("c", func);
             state.run("a = c(6)");
-            assertTrue(((FunctionValue)func).run(new VarArg(LuaValue.of(3))).get(0).equals(LuaValue.of(6)));
+            assertTrue(func.call(state, new VarArg(LuaValue.of(3))).get(0).equals(LuaValue.of(6)));
             assertTrue(state.getGlobal("a").equals(LuaValue.of(720)));
             assertTrue(state.getGlobalTable().get(LuaValue.of("a")).equals(state.getGlobal("a")));
             state.getGlobalTable().put(LuaValue.of("b"), LuaValue.of(890));
@@ -127,6 +126,36 @@ public class TestMain {
             state.setGlobal("val", value);
             assertTrue(state.getGlobal("val").equals(new StringValue(new byte[]{ 'a', 'b', 'c', 0, 'd', 'e', 'f' })));
             System.gc();
+            assertTrue(LuaValue.of(10).add(state, LuaValue.of(30)).equals(LuaValue.of(40)));
+            assertTrue(LuaValue.of(10).sub(state, LuaValue.of(5)).equals(LuaValue.of(5)));
+            assertTrue(LuaValue.of(10).mul(state, LuaValue.of(3)).equals(LuaValue.of(30)));
+            assertTrue(LuaValue.of(100).div(state, LuaValue.of(10)).equals(LuaValue.of(10)));
+            assertTrue(LuaValue.of(10).intDiv(state, LuaValue.of(3)).equals(LuaValue.of(3)));
+            assertTrue(LuaValue.of(10).mod(state, LuaValue.of(3)).equals(LuaValue.of(1)));
+            assertTrue(LuaValue.of(2).pow(state, LuaValue.of(10)).equals(LuaValue.of(1024)));
+            assertTrue(LuaValue.of(-50).minus(state).equals(LuaValue.of(50)));
+            assertTrue(LuaValue.of(0).not(state).equals(LuaValue.of(-1)));
+            assertTrue(LuaValue.of(2).and(state, LuaValue.of(3)).equals(LuaValue.of(2)));
+            assertTrue(LuaValue.of(2).or(state, LuaValue.of(4)).equals(LuaValue.of(6)));
+            assertTrue(LuaValue.of(2).xor(state, LuaValue.of(3)).equals(LuaValue.of(1)));
+            assertTrue(LuaValue.of(2).shiftLeft(state, LuaValue.of(3)).equals(LuaValue.of(16)));
+            assertTrue(LuaValue.of(2).shiftRight(state, LuaValue.of(1)).equals(LuaValue.of(1)));
+            assertTrue(LuaValue.of(10).equals(state, LuaValue.of(10)));
+            assertTrue(!LuaValue.of(10).equals(state, LuaValue.of(15)));
+            assertTrue(LuaValue.of(10).lessThan(state, LuaValue.of(15)));
+            assertTrue(!LuaValue.of(15).lessThan(state, LuaValue.of(10)));
+            assertTrue(LuaValue.of(10).lessEqual(state, LuaValue.of(10)));
+            assertTrue(!LuaValue.of(11).lessEqual(state, LuaValue.of(10)));
+            assertTrue(LuaValue.of("foo").length(state).equals(LuaValue.of(3)));
+            assertTrue(LuaValue.of(1).concat(state, LuaValue.of(2), LuaValue.of(3)).equals(LuaValue.of("123")));
+            TableValue table = LuaValue.fromMap(state, Map.of(
+                    LuaValue.of("foo"), LuaValue.of(5),
+                    LuaValue.of("bar"), LuaValue.of(10),
+                    LuaValue.of("baz"), LuaValue.of(15)
+            ));
+            assertTrue(table.index(state, LuaValue.of("bar")).equals(LuaValue.of(10)));
+            table.newindex(state, LuaValue.of("bar"), LuaValue.of(20));
+            assertTrue(table.index(state, LuaValue.of("bar")).equals(LuaValue.of(20)));
         }
     }
 
@@ -308,8 +337,8 @@ public class TestMain {
                     }),
                     LuaValue.of("__call"), LuaValue.fromFunction(state, (thread, args) -> {
                         assertTrue(args.size() == 2);
-                        StringValue value = (StringValue)args.checkValue(1, ValueType.STRING, "__call");
-                        assertTrue(value.toString().equals("call"));
+                        String value = args.checkString(1, "__call");
+                        assertTrue(value.equals("call"));
                         return new VarArg(LuaValue.of(-1), LuaValue.of(-2));
                     })
             ));
@@ -320,6 +349,8 @@ public class TestMain {
             state.run("a, b = ud('call')");
             assertTrue(state.getGlobal("a").equals(LuaValue.of(-1)));
             assertTrue(state.getGlobal("b").equals(LuaValue.of(-2)));
+            assertTrue(test.call(state, new VarArg(LuaValue.of("call"))).equals(new VarArg(LuaValue.of(-1), LuaValue.of(-2))));
+            assertTrue(test.add(state, LuaValue.of(4.5)).equals(LuaValue.of(11.5)));
             test.setMetaTable(state, null);
             assertTrue(test.getMetaTable(state) == null);
             metatable = LuaValue.fromMap(state, Map.of(

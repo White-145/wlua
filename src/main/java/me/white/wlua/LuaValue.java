@@ -1,6 +1,7 @@
 package me.white.wlua;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -102,7 +103,7 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
         return isNil(value) ? null : value;
     }
 
-    public TableValue getMetaTable(LuaThread thread) {
+    public final TableValue getMetaTable(LuaThread thread) {
         thread.checkIsAlive();
         thread.pushValue(this);
         if (LuaBindings.getmetatable(thread.address, -1) == 0) {
@@ -114,12 +115,150 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
         return (TableValue)value;
     }
 
-    public void setMetaTable(LuaThread thread, TableValue metatable) {
+    public final void setMetaTable(LuaThread thread, TableValue metatable) {
         thread.checkIsAlive();
         thread.pushValue(this);
         thread.pushValue(metatable);
         LuaBindings.setmetatable(thread.address, -2);
         LuaBindings.settop(thread.address, -2);
+    }
+
+    private LuaValue arith(LuaThread thread, LuaValue value, int code) {
+        thread.pushValue(this);
+        thread.pushValue(value);
+        LuaBindings.arith(thread.address, code);
+        LuaValue result = from(thread, -1);
+        LuaBindings.settop(thread.address, -2);
+        return result;
+    }
+
+    private LuaValue arith(LuaThread thread, int code) {
+        thread.pushValue(this);
+        LuaBindings.arith(thread.address, code);
+        LuaValue result = from(thread, -1);
+        LuaBindings.settop(thread.address, -2);
+        return result;
+    }
+
+    private boolean compare(LuaThread thread, LuaValue value, int code) {
+        thread.pushValue(this);
+        thread.pushValue(value);
+        boolean result = LuaBindings.compare(thread.address, -2, -1, code) == 1;
+        LuaBindings.settop(thread.address, -3);
+        return result;
+    }
+
+    public final LuaValue add(LuaThread thread, LuaValue value) {
+        return arith(thread, value, LuaBindings.OPADD);
+    }
+
+    public final LuaValue sub(LuaThread thread, LuaValue value) {
+        return arith(thread, value, LuaBindings.OPSUB);
+    }
+
+    public final LuaValue mul(LuaThread thread, LuaValue value) {
+        return arith(thread, value, LuaBindings.OPMUL);
+    }
+
+    public final LuaValue div(LuaThread thread, LuaValue value) {
+        return arith(thread, value, LuaBindings.OPDIV);
+    }
+
+    public final LuaValue intDiv(LuaThread thread, LuaValue value) {
+        return arith(thread, value, LuaBindings.OPIDIV);
+    }
+
+    public final LuaValue mod(LuaThread thread, LuaValue value) {
+        return arith(thread, value, LuaBindings.OPMOD);
+    }
+
+    public final LuaValue pow(LuaThread thread, LuaValue value) {
+        return arith(thread, value, LuaBindings.OPPOW);
+    }
+
+    public final LuaValue minus(LuaThread thread) {
+        return arith(thread, LuaBindings.OPUNM);
+    }
+
+    public final LuaValue not(LuaThread thread) {
+        return arith(thread, LuaBindings.OPBNOT);
+    }
+
+    public final LuaValue and(LuaThread thread, LuaValue value) {
+        return arith(thread, value, LuaBindings.OPBAND);
+    }
+
+    public final LuaValue or(LuaThread thread, LuaValue value) {
+        return arith(thread, value, LuaBindings.OPBOR);
+    }
+
+    public final LuaValue xor(LuaThread thread, LuaValue value) {
+        return arith(thread, value, LuaBindings.OPBXOR);
+    }
+
+    public final LuaValue shiftLeft(LuaThread thread, LuaValue value) {
+        return arith(thread, value, LuaBindings.OPSHL);
+    }
+
+    public final LuaValue shiftRight(LuaThread thread, LuaValue value) {
+        return arith(thread, value, LuaBindings.OPSHR);
+    }
+
+    public final boolean equals(LuaThread thread, LuaValue value) {
+        return compare(thread, value, LuaBindings.OPEQ);
+    }
+
+    public final boolean lessThan(LuaThread thread, LuaValue value) {
+        return compare(thread, value, LuaBindings.OPLT);
+    }
+
+    public final boolean lessEqual(LuaThread thread, LuaValue value) {
+        return compare(thread, value, LuaBindings.OPLE);
+    }
+
+    public final LuaValue length(LuaThread thread) {
+        thread.pushValue(this);
+        LuaBindings.len(thread.address, -1);
+        LuaValue result = from(thread, -1);
+        LuaBindings.settop(thread.address, -3);
+        return result;
+    }
+
+    public final LuaValue concat(LuaThread thread, LuaValue... values) {
+        thread.pushValue(this);
+        for (LuaValue value : values) {
+            thread.pushValue(value);
+        }
+        LuaBindings.concat(thread.address, values.length + 1);
+        LuaValue result = from(thread, -1);
+        LuaBindings.settop(thread.address, -2);
+        return result;
+    }
+
+    public final LuaValue index(LuaThread thread, LuaValue index) {
+        thread.pushValue(this);
+        thread.pushValue(index);
+        LuaBindings.gettable(thread.address, -2);
+        LuaValue result = from(thread, -1);
+        LuaBindings.settop(thread.address, -3);
+        return result;
+    }
+
+    public final void newindex(LuaThread thread, LuaValue index, LuaValue value) {
+        thread.pushValue(this);
+        thread.pushValue(index);
+        thread.pushValue(value);
+        LuaBindings.settable(thread.address, -3);
+        LuaBindings.settop(thread.address, -2);
+    }
+
+    public final VarArg call(LuaThread thread, VarArg args) {
+        thread.checkIsAlive();
+        thread.pushValue(this);
+        args.push(thread);
+        int code = LuaBindings.pcallk(thread.address, args.size(), LuaBindings.MULTRET, 0, 0, MemorySegment.NULL);
+        LuaException.checkError(code, thread);
+        return VarArg.collect(thread, LuaBindings.gettop(thread.address));
     }
 
     public boolean isNil() {

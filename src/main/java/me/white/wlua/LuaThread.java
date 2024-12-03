@@ -95,7 +95,7 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
 
     public VarArg run(String chunk) {
         checkIsAlive();
-        return LuaValue.load(this, chunk).run(VarArg.empty());
+        return LuaValue.load(this, chunk).call(this, VarArg.empty());
     }
 
     public VarArg start(FunctionValue chunk, VarArg args) {

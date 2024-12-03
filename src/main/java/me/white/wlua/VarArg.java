@@ -1,5 +1,6 @@
 package me.white.wlua;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.function.Predicate;
 
@@ -130,5 +131,16 @@ public class VarArg {
 
     public LuaThread checkThread(int i, String function) throws LuaException {
         return (LuaThread)checkValue(i, ValueType.THREAD, function);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (!(obj instanceof VarArg)) {
+            return false;
+        }
+        return Arrays.equals(values, ((VarArg)obj).values);
     }
 }
