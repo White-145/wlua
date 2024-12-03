@@ -2,6 +2,7 @@ package me.white.wlua;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +61,20 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
         return (FunctionValue)value;
     }
 
+    public static FunctionValue fromBytes(LuaThread thread, byte[] bytes) {
+        Objects.requireNonNull(thread);
+        thread.checkIsAlive();
+        Objects.requireNonNull(bytes);
+        int code;
+        try (Arena arena = Arena.ofConfined()) {
+            code = LuaBindings.auxiliaryLoadbufferx(thread.address, arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes), bytes.length, arena.allocateFrom("chunk"), MemorySegment.NULL);
+        }
+        LuaException.checkError(code, thread);
+        FunctionValue value = (FunctionValue)LuaValue.from(thread, -1);
+        LuaBindings.settop(thread.address, -2);
+        return value;
+    }
+
     public static TableValue fromMap(LuaThread thread, Map<LuaValue, LuaValue> map) {
         Objects.requireNonNull(thread);
         thread.checkIsAlive();
@@ -103,26 +118,6 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
         return isNil(value) ? null : value;
     }
 
-    public final TableValue getMetaTable(LuaThread thread) {
-        thread.checkIsAlive();
-        thread.pushValue(this);
-        if (LuaBindings.getmetatable(thread.address, -1) == 0) {
-            LuaBindings.settop(thread.address, -2);
-            return null;
-        }
-        LuaValue value = from(thread, -1);
-        LuaBindings.settop(thread.address, -3);
-        return (TableValue)value;
-    }
-
-    public final void setMetaTable(LuaThread thread, TableValue metatable) {
-        thread.checkIsAlive();
-        thread.pushValue(this);
-        thread.pushValue(metatable);
-        LuaBindings.setmetatable(thread.address, -2);
-        LuaBindings.settop(thread.address, -2);
-    }
-
     private LuaValue arith(LuaThread thread, LuaValue value, int code) {
         thread.pushValue(this);
         thread.pushValue(value);
@@ -146,6 +141,26 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
         boolean result = LuaBindings.compare(thread.address, -2, -1, code) == 1;
         LuaBindings.settop(thread.address, -3);
         return result;
+    }
+
+    public final TableValue getMetaTable(LuaThread thread) {
+        thread.checkIsAlive();
+        thread.pushValue(this);
+        if (LuaBindings.getmetatable(thread.address, -1) == 0) {
+            LuaBindings.settop(thread.address, -2);
+            return null;
+        }
+        LuaValue value = from(thread, -1);
+        LuaBindings.settop(thread.address, -3);
+        return (TableValue)value;
+    }
+
+    public final void setMetaTable(LuaThread thread, TableValue metatable) {
+        thread.checkIsAlive();
+        thread.pushValue(this);
+        thread.pushValue(metatable);
+        LuaBindings.setmetatable(thread.address, -2);
+        LuaBindings.settop(thread.address, -2);
     }
 
     public final LuaValue add(LuaThread thread, LuaValue value) {

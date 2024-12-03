@@ -31,6 +31,8 @@ public sealed abstract class RefValue extends LuaValue permits FunctionValue, Ta
         cleanable.clean();
     }
 
+    public abstract RefValue copy(LuaThread thread);
+
     @Override
     final void push(LuaThread thread) {
         checkIsAlive();

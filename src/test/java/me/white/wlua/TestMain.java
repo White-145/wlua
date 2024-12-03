@@ -2,7 +2,6 @@ package me.white.wlua;
 
 import java.util.*;
 
-// TODO * Moving reference values between states
 // TODO * Add ASSUMING and NOTE comments in questionable parts
 // TODO * Perchance make a separate auxiliary thread for using with java?
 // TODO * Proper error handling
@@ -124,6 +123,7 @@ public class TestMain {
             state.setGlobal("val", value);
             assertTrue(state.getGlobal("val").equals(new StringValue(new byte[]{ 'a', 'b', 'c', 0, 'd', 'e', 'f' })));
             System.gc();
+
             assertTrue(LuaValue.of(10).add(state, LuaValue.of(30)).equals(LuaValue.of(40)));
             assertTrue(LuaValue.of(10).sub(state, LuaValue.of(5)).equals(LuaValue.of(5)));
             assertTrue(LuaValue.of(10).mul(state, LuaValue.of(3)).equals(LuaValue.of(30)));
@@ -154,6 +154,22 @@ public class TestMain {
             assertTrue(table.index(state, LuaValue.of("bar")).equals(LuaValue.of(10)));
             table.newindex(state, LuaValue.of("bar"), LuaValue.of(20));
             assertTrue(table.index(state, LuaValue.of("bar")).equals(LuaValue.of(20)));
+
+            state.run("function a() return 5 end");
+            FunctionValue a = (FunctionValue)state.getGlobal("a");
+            assertTrue(a.call(VarArg.empty()).get(0).equals(LuaValue.of(5)));
+            state.setGlobal("b", LuaValue.fromFunction(state, (thread, args) -> {
+                return new VarArg(LuaValue.of(7));
+            }));
+            state.run("c = {a = 10, b = 20}");
+            try (LuaState state2 = new LuaState()) {
+                state2.setGlobal("a", a.copy(state2));
+                assertTrue(state2.getGlobal("a").call(state2, VarArg.empty()).get(0).equals(LuaValue.of(5)));
+                state2.setGlobal("b", ((FunctionValue)state.getGlobal("b")).copy(state2));
+                assertTrue(state2.getGlobal("b").call(state2, VarArg.empty()).get(0).equals(LuaValue.of(7)));
+                state2.setGlobal("c", ((TableValue)state.getGlobal("c")).copy(state2));
+                assertTrue(((TableValue)state2.getGlobal("c")).get(LuaValue.of("b")).equals(LuaValue.of(20)));
+            }
         }
     }
 

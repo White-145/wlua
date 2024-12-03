@@ -22,7 +22,7 @@ class LuaBindings {
     private static final MethodHandle CONCAT_HANDLE = downcallHandle("lua_concat", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
     private static final MethodHandle COPY_HANDLE = downcallHandle("lua_copy", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
     private static final MethodHandle CREATETABLE_HANDLE = downcallHandle("lua_createtable", FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
-    private static final MethodHandle DUMP_HANDLE = downcallHandle("lua_dump", FunctionDescriptor.ofVoid(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+    private static final MethodHandle DUMP_HANDLE = downcallHandle("lua_dump", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
     private static final MethodHandle ERROR_HANDLE = downcallHandle("lua_error", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
     private static final MethodHandle GC_HANDLE = downcallHandle("lua_gc", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
     private static final MethodHandle GC_STEP_HANDLE = downcallHandle("lua_gc", FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));

@@ -9,6 +9,14 @@ public final class TableValue extends RefValue implements Map<LuaValue, LuaValue
         super(state, reference);
     }
 
+    @Override
+    public RefValue copy(LuaThread thread) {
+        if (state.isSubThread(thread)) {
+            return this;
+        }
+        return LuaValue.fromMap(thread, toMap());
+    }
+
     public Map<LuaValue, LuaValue> toMap() {
         checkIsAlive();
         Map<LuaValue, LuaValue> map = new HashMap<>();

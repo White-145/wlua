@@ -2,12 +2,14 @@ package me.white.wlua;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.util.*;
 
 public final class LuaState extends LuaThread {
     private static final Arena GLOBAL = Arena.ofAuto();
     private static final MemorySegment GC_FUNCTION = LuaBindings.stubCFunction(GLOBAL, LuaState::gcFunction);
     static final MemorySegment RUN_FUNCTION = LuaBindings.stubCFunction(GLOBAL, LuaState::runFunction);
+    static final MemorySegment DUMP_WRITER = LuaBindings.stubWriter(GLOBAL, LuaState::dumpWriter);
     static final int RIDX_REFERENCES = 11;
     static final int RIDX_GC_METATABLE = 12;
     static final int RIDX_USERDATAS = 13;
@@ -60,6 +62,15 @@ public final class LuaState extends LuaThread {
         VarArg results = ((JavaFunction)object).run(thread, args);
         results.push(thread);
         return results.size();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static int dumpWriter(MemorySegment address, MemorySegment p, long sz, MemorySegment ud) {
+        int id = ud.reinterpret(ValueLayout.JAVA_INT.byteSize()).get(ValueLayout.JAVA_INT, 0);
+        List<byte[]> chunks = (List<byte[]>)ObjectManager.get(id);
+        MemorySegment chunk = p.reinterpret(sz);
+        chunks.add(chunk.toArray(ValueLayout.JAVA_BYTE));
+        return 0;
     }
 
     public LuaThread subThread() {
