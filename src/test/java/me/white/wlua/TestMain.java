@@ -7,7 +7,6 @@ import java.util.*;
 // TODO * Perchance make a separate auxiliary thread for using with java?
 // TODO * Sub-sub threads?
 // TODO * Proper error handling
-
 // TODO * Java module
 // TODO * Publish
 
