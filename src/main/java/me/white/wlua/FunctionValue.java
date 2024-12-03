@@ -22,6 +22,7 @@ public final class FunctionValue extends RefValue {
             if (name.equals(MemorySegment.NULL)) {
                 throw new IllegalStateException("Could not get function object.");
             }
+            // ASSUMING function is created by wlua
             LuaBindings.getiuservalue(state.address, -1, 1);
             LuaBindings.getiuservalue(state.address, -1, 1);
             int id = LuaBindings.tointegerx(state.address, -1, MemorySegment.NULL);

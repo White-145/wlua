@@ -76,15 +76,18 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
         return size() == 0;
     }
 
-    // TODO remove dependency to table?
     @Override
     public Object[] toArray() {
         table.checkIsAlive();
         int size = size();
-        Object[] values = new Object[size];
+        LuaValue[] values = new LuaValue[size];
+        state.pushValue(this);
         for (int i = 0; i < size; ++i) {
-            values[i] = table.get(LuaValue.index(i));
+            LuaBindings.geti(state.address, -1, i + 1);
+            values[i] = LuaValue.from(state, -1);
+            LuaBindings.settop(state.address, -2);
         }
+        LuaBindings.settop(state.address, -2);
         return values;
     }
 
@@ -93,12 +96,11 @@ public final class ListValue extends LuaValue implements List<LuaValue> {
     public <T> T[] toArray(T[] a) {
         table.checkIsAlive();
         int size = size();
+        LuaValue[] array = (LuaValue[])toArray();
         if (a.length < size) {
-            return (T[])Arrays.copyOf(toArray(), size, a.getClass());
+            return (T[])Arrays.copyOf(array, size, a.getClass());
         }
-        for (int i = 0; i < size; ++i) {
-            a[i] = (T)table.get(LuaValue.index(i));
-        }
+        System.arraycopy(array, 0, a, 0, size);
         if (a.length > size) {
             a[size] = null;
         }
