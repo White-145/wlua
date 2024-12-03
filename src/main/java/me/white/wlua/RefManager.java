@@ -55,7 +55,7 @@ class RefManager {
 
     void fromReference(LuaThread thread, int reference) {
         if (!state.isSubThread(thread)) {
-            throw new IllegalStateException("Could not move references between states.");
+            throw new IllegalStateException("Could not move reference between states.");
         }
         LuaBindings.rawgeti(thread.address, LuaBindings.REGISTRYINDEX, LuaState.RIDX_REFERENCES);
         LuaBindings.pushinteger(thread.address, reference);

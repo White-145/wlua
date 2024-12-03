@@ -95,7 +95,7 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
 
     public VarArg run(String chunk) {
         checkIsAlive();
-        return LuaValue.load(this, chunk).call(this, VarArg.empty());
+        return LuaValue.load(this, chunk).call(this, VarArg.of());
     }
 
     public VarArg start(FunctionValue chunk, VarArg args) {
@@ -117,12 +117,12 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
         return VarArg.collect(this, results);
     }
 
-    // this method returns VarArg purely for syntactic purposes
+    // NOTE this method returns VarArg purely for syntactic purposes
     public VarArg yield(VarArg args) {
         checkIsAlive();
         args.push(this);
         LuaBindings.yieldk(address, args.size(), 0, MemorySegment.NULL);
-        return VarArg.empty();
+        return VarArg.of();
     }
 
     public boolean isYieldable() {
@@ -137,6 +137,9 @@ public sealed class LuaThread extends LuaValue implements AutoCloseable permits 
 
     @Override
     void push(LuaThread thread) {
+        if (!state.isSubThread(thread)) {
+            throw new IllegalStateException("Could not move thread between states.");
+        }
         LuaBindings.pushthread(address);
         LuaBindings.xmove(address, thread.address, 1);
     }

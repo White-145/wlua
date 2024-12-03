@@ -2,7 +2,6 @@ package me.white.wlua;
 
 import java.util.*;
 
-// TODO * Add ASSUMING and NOTE comments in questionable parts
 // TODO * Perchance make a separate auxiliary thread for using with java?
 // TODO * Proper error handling
 // TODO * Java module
@@ -69,7 +68,7 @@ public class TestMain {
             assertTrue(func instanceof FunctionValue);
             state.setGlobal("c", func);
             state.run("a = c(6)");
-            assertTrue(func.call(state, new VarArg(LuaValue.of(3))).get(0).equals(LuaValue.of(6)));
+            assertTrue(func.call(state, VarArg.of(LuaValue.of(3))).get(0).equals(LuaValue.of(6)));
             assertTrue(state.getGlobal("a").equals(LuaValue.of(720)));
             assertTrue(state.getGlobalTable().get(LuaValue.of("a")).equals(state.getGlobal("a")));
             state.getGlobalTable().put(LuaValue.of("b"), LuaValue.of(890));
@@ -157,16 +156,16 @@ public class TestMain {
 
             state.run("function a() return 5 end");
             FunctionValue a = (FunctionValue)state.getGlobal("a");
-            assertTrue(a.call(VarArg.empty()).get(0).equals(LuaValue.of(5)));
+            assertTrue(a.call(VarArg.of()).get(0).equals(LuaValue.of(5)));
             state.setGlobal("b", LuaValue.fromFunction(state, (thread, args) -> {
-                return new VarArg(LuaValue.of(7));
+                return VarArg.of(LuaValue.of(7));
             }));
             state.run("c = {a = 10, b = 20}");
             try (LuaState state2 = new LuaState()) {
                 state2.setGlobal("a", a.copy(state2));
-                assertTrue(state2.getGlobal("a").call(state2, VarArg.empty()).get(0).equals(LuaValue.of(5)));
+                assertTrue(state2.getGlobal("a").call(state2, VarArg.of()).get(0).equals(LuaValue.of(5)));
                 state2.setGlobal("b", ((FunctionValue)state.getGlobal("b")).copy(state2));
-                assertTrue(state2.getGlobal("b").call(state2, VarArg.empty()).get(0).equals(LuaValue.of(7)));
+                assertTrue(state2.getGlobal("b").call(state2, VarArg.of()).get(0).equals(LuaValue.of(7)));
                 state2.setGlobal("c", ((TableValue)state.getGlobal("c")).copy(state2));
                 assertTrue(((TableValue)state2.getGlobal("c")).get(LuaValue.of("b")).equals(LuaValue.of(20)));
             }
@@ -185,7 +184,7 @@ public class TestMain {
                 assertTrue(b instanceof NumberValue && !(b instanceof IntegerValue));
                 assertTrue(b.toNumber() == 3.5);
                 LuaValue result = LuaValue.of(a.toNumber() * b.toNumber());
-                return new VarArg(result);
+                return VarArg.of(result);
             }));
             state.run("a = b(4, 3.5)");
             assertTrue(state.getGlobal("a").equals(LuaValue.of(14)));
@@ -347,13 +346,13 @@ public class TestMain {
                     LuaValue.of("__add"), LuaValue.fromFunction(state, (thread, args) -> {
                         TestUserData left = args.checkUserData(0, TestUserData.class, "__add", "expected TestUserData");
                         NumberValue right = (NumberValue)args.checkValue(1, ValueType.NUMBER, "__add");
-                        return new VarArg(LuaValue.of(left.x + right.toNumber()));
+                        return VarArg.of(LuaValue.of(left.x + right.toNumber()));
                     }),
                     LuaValue.of("__call"), LuaValue.fromFunction(state, (thread, args) -> {
                         assertTrue(args.size() == 2);
                         String value = args.checkString(1, "__call");
                         assertTrue(value.equals("call"));
-                        return new VarArg(LuaValue.of(-1), LuaValue.of(-2));
+                        return VarArg.of(LuaValue.of(-1), LuaValue.of(-2));
                     })
             ));
             test.setMetaTable(state, metatable);
@@ -363,7 +362,7 @@ public class TestMain {
             state.run("a, b = ud('call')");
             assertTrue(state.getGlobal("a").equals(LuaValue.of(-1)));
             assertTrue(state.getGlobal("b").equals(LuaValue.of(-2)));
-            assertTrue(test.call(state, new VarArg(LuaValue.of("call"))).equals(new VarArg(LuaValue.of(-1), LuaValue.of(-2))));
+            assertTrue(test.call(state, VarArg.of(LuaValue.of("call"))).equals(VarArg.of(LuaValue.of(-1), LuaValue.of(-2))));
             assertTrue(test.add(state, LuaValue.of(4.5)).equals(LuaValue.of(11.5)));
             test.setMetaTable(state, null);
             assertTrue(test.getMetaTable(state) == null);
@@ -383,25 +382,25 @@ public class TestMain {
         try (LuaState state = new LuaState()) {
             state.setGlobal("a", LuaValue.fromFunction(state, (lua, args) -> {
                 assertTrue(lua.isYieldable());
-                return lua.yield(VarArg.empty());
+                return lua.yield(VarArg.of());
             }));
-            state.start(LuaValue.load(state, "a(); b = 8"), VarArg.empty());
+            state.start(LuaValue.load(state, "a(); b = 8"), VarArg.of());
             LuaThread thread = state.subThread();
-            thread.start(LuaValue.load(state, "b = 1; a(); b = 2"), VarArg.empty());
+            thread.start(LuaValue.load(state, "b = 1; a(); b = 2"), VarArg.of());
             assertTrue(thread.getGlobal("b").equals(LuaValue.of(1)));
             assertTrue(thread.isSuspended());
             LuaThread thread2 = state.subThread();
             assertTrue(!thread2.isSuspended());
-            thread2.start(LuaValue.load(state, "b = 3; a(); b = 0"), VarArg.empty());
+            thread2.start(LuaValue.load(state, "b = 3; a(); b = 0"), VarArg.of());
             assertTrue(state.getGlobal("b").equals(LuaValue.of(3)));
-            thread.resume(VarArg.empty());
+            thread.resume(VarArg.of());
             assertTrue(state.getGlobal("b").equals(LuaValue.of(2)));
             assertTrue(!thread.isSuspended());
-            state.resume(VarArg.empty());
+            state.resume(VarArg.of());
             assertTrue(state.getGlobal("b").equals(LuaValue.of(8)));
             assertTrue(!state.isSuspended());
             assertTrue(thread2.isSuspended());
-            thread2.resume(VarArg.empty());
+            thread2.resume(VarArg.of());
             assertTrue(state.getGlobal("b").equals(LuaValue.of(0)));
         }
     }

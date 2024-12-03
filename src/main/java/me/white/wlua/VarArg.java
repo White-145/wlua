@@ -5,10 +5,14 @@ import java.util.Collection;
 import java.util.function.Predicate;
 
 public class VarArg {
-    private static final VarArg EMPTY = new VarArg();
+    private static final VarArg EMPTY = new VarArg(new LuaValue[0]);
     private final LuaValue[] values;
 
-    public VarArg(LuaValue ...values) {
+    private VarArg(LuaValue[] values) {
+        this.values = values;
+    }
+
+    private static LuaValue[] conform(LuaValue[] values) {
         int size = 0;
         for (int i = 0; i < values.length; ++i) {
             if (values[i] == null) {
@@ -17,24 +21,6 @@ public class VarArg {
                 size = i + 1;
             }
         }
-        this.values = conform(values, size);
-    }
-
-    public VarArg(Collection<LuaValue> values) {
-        this(values.toArray(new LuaValue[0]));
-    }
-
-    static VarArg collect(LuaThread thread, int amount) {
-        thread.checkIsAlive();
-        LuaValue[] values = new LuaValue[amount];
-        for (int i = 0; i < amount; ++i) {
-            values[i] = LuaValue.from(thread, i - amount);
-        }
-        LuaBindings.settop(thread.address, -amount - 1);
-        return new VarArg(values);
-    }
-
-    public static LuaValue[] conform(LuaValue[] values, int size) {
         if (size == values.length) {
             return values;
         }
@@ -46,8 +32,26 @@ public class VarArg {
         return conformed;
     }
 
-    public static VarArg empty() {
-        return EMPTY;
+    static VarArg collect(LuaThread thread, int amount) {
+        thread.checkIsAlive();
+        LuaValue[] values = new LuaValue[amount];
+        for (int i = 0; i < amount; ++i) {
+            values[i] = LuaValue.from(thread, i - amount);
+        }
+        LuaBindings.settop(thread.address, -amount - 1);
+        return VarArg.of(values);
+    }
+
+    public static VarArg of(LuaValue... values) {
+        LuaValue[] conformed = conform(values);
+        if (values.length == 0) {
+            return EMPTY;
+        }
+        return new VarArg(conformed);
+    }
+
+    public static VarArg of(Collection<LuaValue> values) {
+        return of(values.toArray(new LuaValue[0]));
     }
 
     void push(LuaThread thread) {
