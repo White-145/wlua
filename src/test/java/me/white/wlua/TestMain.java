@@ -3,7 +3,6 @@ package me.white.wlua;
 import java.util.*;
 
 // TODO * Perchance make a separate auxiliary thread for using with java?
-// TODO * Proper error handling
 // TODO * Java module
 // TODO * Publish
 
@@ -151,7 +150,7 @@ public class TestMain {
                     LuaValue.of("baz"), LuaValue.of(15)
             ));
             assertTrue(table.index(state, LuaValue.of("bar")).equals(LuaValue.of(10)));
-            table.newindex(state, LuaValue.of("bar"), LuaValue.of(20));
+            table.newIndex(state, LuaValue.of("bar"), LuaValue.of(20));
             assertTrue(table.index(state, LuaValue.of("bar")).equals(LuaValue.of(20)));
 
             state.run("function a() return 5 end");
@@ -350,7 +349,7 @@ public class TestMain {
                     }),
                     LuaValue.of("__call"), LuaValue.fromFunction(state, (thread, args) -> {
                         assertTrue(args.size() == 2);
-                        String value = args.checkString(1, "__call");
+                        String value = args.checkString(1);
                         assertTrue(value.equals("call"));
                         return VarArg.of(LuaValue.of(-1), LuaValue.of(-2));
                     })

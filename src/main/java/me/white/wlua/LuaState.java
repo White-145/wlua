@@ -13,6 +13,7 @@ public final class LuaState extends LuaThread {
     static final int RIDX_REFERENCES = 11;
     static final int RIDX_GC_METATABLE = 12;
     static final int RIDX_USERDATAS = 13;
+    static final int RIDX_ERROR_HANDLER = 14;
     final RefManager references = new RefManager(this);
     final Set<LuaThread> threads = new HashSet<>();
 
@@ -34,6 +35,8 @@ public final class LuaState extends LuaThread {
         }
         LuaBindings.setmetatable(address, -2);
         LuaBindings.rawseti(address, LuaBindings.REGISTRYINDEX, RIDX_USERDATAS);
+        pushValue(LuaValue.fromFunction(this, LuaState::messageHandler));
+        LuaBindings.rawseti(address, LuaBindings.REGISTRYINDEX, RIDX_ERROR_HANDLER);
     }
 
     private static int gcFunction(MemorySegment address) {
@@ -71,6 +74,15 @@ public final class LuaState extends LuaThread {
         MemorySegment chunk = p.reinterpret(sz);
         chunks.add(chunk.toArray(ValueLayout.JAVA_BYTE));
         return 0;
+    }
+
+    private static VarArg messageHandler(LuaThread thread, VarArg args) {
+        try (Arena arena = Arena.ofConfined()) {
+            LuaBindings.auxiliaryTraceback(thread.address, thread.address, arena.allocateFrom(args.checkString(0)), 1);
+        }
+        LuaValue value = LuaValue.from(thread, -1);
+        LuaBindings.settop(thread.address, -2);
+        return VarArg.of(value);
     }
 
     public LuaThread subThread() {

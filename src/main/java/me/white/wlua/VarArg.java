@@ -108,8 +108,8 @@ public class VarArg {
         return check(i, LuaValue::isInteger, function, "expected integer").toInteger();
     }
 
-    public String checkString(int i, String function) throws LuaException {
-        return checkValue(i, ValueType.STRING, function).toString();
+    public String checkString(int i) throws LuaException {
+        return get(i).toString();
     }
 
     public byte[] checkBytes(int i, String function) throws LuaException {
@@ -146,5 +146,10 @@ public class VarArg {
             return false;
         }
         return Arrays.equals(values, ((VarArg)obj).values);
+    }
+
+    @Override
+    public String toString() {
+        return Arrays.toString(values);
     }
 }

@@ -42,9 +42,11 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
         Objects.requireNonNull(thread);
         thread.checkIsAlive();
         Objects.requireNonNull(chunk);
+        int code;
         try (Arena arena = Arena.ofConfined()) {
-            LuaBindings.auxiliaryLoadstring(thread.address, arena.allocateFrom(chunk));
+            code = LuaBindings.auxiliaryLoadstring(thread.address, arena.allocateFrom(chunk));
         }
+        LuaException.checkError(code, thread);
         FunctionValue function = (FunctionValue)from(thread, -1);
         LuaBindings.settop(thread.address, -2);
         return function;
@@ -259,7 +261,7 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
         return result;
     }
 
-    public final void newindex(LuaThread thread, LuaValue index, LuaValue value) {
+    public final void newIndex(LuaThread thread, LuaValue index, LuaValue value) {
         thread.pushValue(this);
         thread.pushValue(index);
         thread.pushValue(value);
@@ -269,11 +271,14 @@ public sealed abstract class LuaValue permits BooleanValue, ListValue, LuaThread
 
     public final VarArg call(LuaThread thread, VarArg args) {
         thread.checkIsAlive();
+        LuaBindings.rawgeti(thread.address, LuaBindings.REGISTRYINDEX, LuaState.RIDX_ERROR_HANDLER);
         thread.pushValue(this);
         args.push(thread);
-        int code = LuaBindings.pcallk(thread.address, args.size(), LuaBindings.MULTRET, 0, 0, MemorySegment.NULL);
+        int code = LuaBindings.pcallk(thread.address, args.size(), LuaBindings.MULTRET, -2 - args.size(), 0, MemorySegment.NULL);
         LuaException.checkError(code, thread);
-        return VarArg.collect(thread, LuaBindings.gettop(thread.address));
+        VarArg results = VarArg.collect(thread, LuaBindings.gettop(thread.address) - 1);
+        LuaBindings.settop(thread.address, -2);
+        return results;
     }
 
     public boolean isNil() {
